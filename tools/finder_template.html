@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>หาของในคลัง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== สีและค่าพื้นฐาน (แก้หน้าตาที่นี่) ===== */
+:root {
+  --bg: #f3f5f8;
+  --fg: #111418;
+  --muted: #4b5563;
+  --card: #ffffff;
+  --border: #c5ccd6;
+  --border-strong: #2b3440;
+  --accent: #0b5cad;
+  --accent-fg: #ffffff;
+  --pin-bg: #0b5cad;
+  --pin-fg: #ffffff;
+  --none-bg: #e5e7eb;
+  --none-fg: #374151;
+  --warn-bg: #fff1b8;
+  --warn-fg: #4a3800;
+  --warn-border: #d9a400;
+  --ok-bg: #d3f2dc;
+  --ok-fg: #0b3d1c;
+  --ok-border: #2f9e58;
+  --err-bg: #ffe0e0;
+  --err-fg: #7a1010;
+  --hl: #e03131;
+  --f-shelf: #ddebf7;
+  --f-letter: #ededed;
+  --f-item: #fff2cc;
+  --f-sign: transparent;
+  --f-fg: #111418;
+  --shadow: 0 1px 3px rgba(0,0,0,.18);
+  --font: 'Sarabun', 'Noto Sans Thai', 'Tahoma', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11151b;
+    --fg: #f1f3f5;
+    --muted: #b6bdc8;
+    --card: #1b222c;
+    --border: #3a4554;
+    --border-strong: #8b97a8;
+    --accent: #6cb2ff;
+    --accent-fg: #06223f;
+    --pin-bg: #3d8bff;
+    --pin-fg: #ffffff;
+    --none-bg: #2c3542;
+    --none-fg: #d0d6df;
+    --warn-bg: #4a3b00;
+    --warn-fg: #ffe9a1;
+    --warn-border: #b98a00;
+    --ok-bg: #0f3a21;
+    --ok-fg: #c6f5d6;
+    --ok-border: #2f9e58;
+    --err-bg: #4a1616;
+    --err-fg: #ffd2d2;
+    --hl: #ff6b6b;
+    --f-shelf: #2b4560;
+    --f-letter: #343b46;
+    --f-item: #5a4a16;
+    --f-fg: #f1f3f5;
+    --shadow: 0 1px 3px rgba(0,0,0,.6);
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.4;
+  overflow-x: hidden;
+}
+body.lock { overflow: hidden; }
+button { font-family: inherit; font-size: inherit; color: inherit; cursor: pointer; }
+h1, h2 { margin: 0; }
+
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 12px; }
+
+/* หัวเว็บ */
+.top { padding: 14px 0 8px; }
+.top h1 { font-size: 26px; font-weight: 700; letter-spacing: .2px; }
+
+/* แถบสถานะข้อมูล */
+.status {
+  margin: 4px 0 10px;
+  padding: 9px 12px;
+  border: 2px solid;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 15px;
+}
+.status.mock { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
+.status.real { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-border); }
+
+/* ช่องค้นหา (sticky) */
+.searchbar {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--bg);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.searchbar .row { display: flex; gap: 8px; }
+.searchbar input {
+  flex: 1 1 auto; min-width: 0;
+  height: 52px;
+  padding: 0 14px;
+  font: inherit; font-size: 18px;
+  color: var(--fg);
+  background: var(--card);
+  border: 2px solid var(--border-strong);
+  border-radius: 10px;
+}
+.searchbar input:focus { outline: 3px solid var(--accent); outline-offset: 1px; }
+.btn {
+  min-height: 48px;
+  padding: 0 16px;
+  border: 2px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--card);
+  font-weight: 600;
+}
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.searchbar .btn { flex: 0 0 auto; height: 52px; }
+
+/* ผลลัพธ์ */
+#results { padding-top: 10px; }
+.count-line { margin: 2px 2px 8px; color: var(--muted); font-size: 15px; }
+.hint { margin: 4px 2px 12px; color: var(--muted); font-size: 15px; }
+.res {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+  min-height: 44px;
+}
+.res.clickable { cursor: pointer; }
+.res .nm { font-weight: 700; font-size: 17px; overflow-wrap: anywhere; }
+.res .cd { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.res .locs { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.loc {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; min-height: 44px;
+  padding: 6px 10px;
+  border: 0; border-radius: 8px;
+  background: var(--pin-bg); color: var(--pin-fg);
+  text-align: left;
+}
+.loc .pin { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
+.loc .qty { flex: 0 0 auto; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.noloc {
+  display: inline-block; margin-top: 8px;
+  padding: 8px 12px; min-height: 36px;
+  background: var(--none-bg); color: var(--none-fg);
+  border-radius: 8px; font-weight: 600;
+}
+.res .total-line { margin-top: 6px; font-size: 14px; color: var(--muted); }
+
+/* ผังคลัง */
+.map-sec { margin-top: 18px; }
+.map-sec h2 { font-size: 20px; margin-bottom: 4px; }
+.map-sec .sub { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 13px; margin-bottom: 8px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 14px; height: 14px; border: 1.5px solid var(--border-strong); display: inline-block; }
+.map {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 12px minmax(0,1fr) 12px minmax(0,1fr);
+  grid-auto-rows: 42px;
+  gap: 4px 0;
+  width: 100%;
+}
+.map .colhead {
+  grid-row: 1;
+  align-self: end;
+  text-align: center;
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  height: 22px; line-height: 22px;
+}
+.map .colhead.c1 { grid-column: 1; }
+.map .colhead.c3 { grid-column: 3; }
+.map .colhead.c5 { grid-column: 5; }
+.frame {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 0; height: 100%;
+  padding: 2px 5px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 0;
+  background: var(--card);
+  color: var(--f-fg);
+  font-size: 12px; line-height: 1.15; font-weight: 600;
+  text-align: center;
+  transition: opacity .2s;
+}
+.frame .lbl {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; overflow-wrap: anywhere; word-break: break-word;
+}
+.frame.shelf { background: var(--f-shelf); }
+.frame.letter { background: var(--f-letter); }
+.frame.item { background: var(--f-item); }
+.frame.sign { background: var(--f-sign); border-style: solid; cursor: default; }
+.frame.store { cursor: pointer; }
+.frame.has-count { padding-right: 17px; }
+.frame .cnt {
+  position: absolute; top: 1px; right: 2px;
+  min-width: 15px; padding: 0 3px;
+  border-radius: 8px;
+  background: var(--border-strong); color: var(--bg);
+  font-size: 10px; line-height: 15px; font-weight: 700;
+}
+.map.has-hl .frame:not(.hl) { opacity: .28; }
+.frame.hl {
+  z-index: 3;
+  outline: 4px solid var(--hl);
+  outline-offset: 0;
+  animation: blink .9s ease-in-out infinite;
+}
+@keyframes blink {
+  0%, 100% { outline-color: var(--hl); box-shadow: 0 0 0 0 transparent; }
+  50% { outline-color: transparent; box-shadow: 0 0 10px 3px var(--hl); }
+}
+@media (prefers-reduced-motion: reduce) { .frame.hl { animation: none; } }
+
+/* จัดการข้อมูล */
+.manage { margin: 24px 0 40px; padding: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
+.manage h2 { font-size: 20px; margin-bottom: 4px; }
+.manage p { margin: 4px 0 10px; color: var(--muted); font-size: 14px; }
+.manage .btns { display: flex; flex-direction: column; gap: 10px; }
+.manage .btn { width: 100%; }
+#importMsg { margin-top: 12px; font-size: 15px; }
+#importMsg .box { padding: 10px 12px; border-radius: 8px; border: 2px solid; overflow-wrap: anywhere; }
+#importMsg .box.ok { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-border); }
+#importMsg .box.warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
+#importMsg .box.err { background: var(--err-bg); color: var(--err-fg); border-color: var(--hl); }
+#importMsg ul { margin: 6px 0 0; padding-left: 20px; }
+
+/* bottom sheet */
+.backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.55); display: none; }
+.backdrop.open { display: block; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+  display: none; flex-direction: column;
+  max-height: 85vh;
+  background: var(--card); color: var(--fg);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,.4);
+}
+.sheet.open { display: flex; animation: up .2s ease-out; }
+@keyframes up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (min-width: 760px) { .sheet { left: 50%; right: auto; width: 640px; transform: translateX(-50%); } .sheet.open { animation: none; } }
+.sheet .hd { padding: 14px 16px 8px; border-bottom: 1px solid var(--border); }
+.sheet .hd h2 { font-size: 20px; overflow-wrap: anywhere; }
+.sheet .hd .meta { color: var(--muted); font-size: 14px; }
+.sheet .bd { overflow-y: auto; padding: 8px 16px; flex: 1 1 auto; -webkit-overflow-scrolling: touch; }
+.sheet .ft { padding: 10px 16px 14px; border-top: 1px solid var(--border); }
+.sheet .ft .btn { width: 100%; min-height: 52px; font-size: 18px; }
+.it { padding: 10px 0; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: start; }
+.it:last-child { border-bottom: 0; }
+.it .lv { grid-row: 1 / span 2; align-self: center; min-width: 56px; text-align: center; padding: 6px 8px; border-radius: 8px; background: var(--pin-bg); color: var(--pin-fg); font-weight: 700; font-size: 14px; }
+.it .n { font-weight: 700; overflow-wrap: anywhere; }
+.it .q { font-weight: 600; white-space: nowrap; font-size: 14px; }
+.it .c { grid-column: 2 / span 2; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.it .note { grid-column: 2 / span 2; font-size: 13px; color: var(--muted); }
+.empty { padding: 20px 0; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><h1>หาของในคลัง</h1></header>
+  <div id="status" class="status mock" role="status"></div>
+
+  <div class="searchbar">
+    <div class="row">
+      <input id="q" type="search" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false"
+             placeholder="พิมพ์ชื่อหรือรหัสสินค้า เช่น เชือก, 560000000025" aria-label="ค้นหาสินค้า">
+      <button id="clear" class="btn" type="button">ล้าง</button>
+    </div>
+  </div>
+
+  <section id="results" aria-live="polite"></section>
+
+  <section class="map-sec" id="mapSec">
+    <h2>ผังคลัง</h2>
+    <div class="sub">แตะกรอบเพื่อดูสินค้าในกรอบนั้น · ตัวเลขมุมกรอบ = จำนวนรายการ</div>
+    <div class="legend">
+      <span><i style="background:var(--f-shelf)"></i>ชั้นวาง</span>
+      <span><i style="background:var(--f-letter)"></i>ตัวอักษร</span>
+      <span><i style="background:var(--f-item)"></i>สินค้า</span>
+      <span><i style="background:transparent"></i>ป้าย/พื้นที่</span>
+    </div>
+    <div id="map" class="map"></div>
+  </section>
+
+  <section class="manage">
+    <h2>จัดการข้อมูล</h2>
+    <p>ลูกน้องกรอกใบจดใน LAY_OUT_02.xlsx แล้วนำไฟล์เข้าที่นี่ ข้อมูลจะถูกเก็บไว้ในเครื่องนี้</p>
+    <div class="btns">
+      <button id="btnImport" class="btn primary" type="button">นำเข้าไฟล์ใบจด (.xlsx)</button>
+      <button id="btnReset" class="btn" type="button">กลับไปใช้ข้อมูลสมมติ</button>
+    </div>
+    <input id="file" type="file" accept=".xlsx" hidden>
+    <div id="importMsg" role="status"></div>
+  </section>
+</div>
+
+<div id="backdrop" class="backdrop"></div>
+<div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="hd"><h2 id="sheetTitle"></h2><div id="sheetMeta" class="meta"></div></div>
+  <div id="sheetBody" class="bd"></div>
+  <div class="ft"><button id="sheetClose" class="btn primary" type="button">ปิด</button></div>
+</div>
+
+<script id="app-data" type="application/json">/*__DATA__*/</script>
+<script>
+(function () {
+  'use strict';
+
+  // ===== ข้อมูลที่ฝังมาจาก build_finder.py =====
+  var DATA = JSON.parse(document.getElementById('app-data').textContent);
+  var FRAMES = DATA.frames;
+  var PRODUCTS = DATA.products;           // [รหัส, ชื่อ, หน่วย, จำนวนรวม]
+  var LS_KEY = 'layoutFinder.v1';
+  var XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  var UNKNOWN_NAME = '⚠ ไม่พบรหัสในรายการสินค้า';
+  var MAX_SHOW = 50;
+
+  // ===== ตัวช่วยเล็กๆ =====
+  function $(id) { return document.getElementById(id); }
+  // สร้าง element แบบปลอดภัย (ใช้ textContent ไม่ใช้ innerHTML กัน XSS จากไฟล์นำเข้า)
+  function h(tag, attrs, kids) {
+    var el = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      if (k === 'class') el.className = attrs[k];
+      else if (k.slice(0, 2) === 'on') el.addEventListener(k.slice(2), attrs[k]);
+      else el.setAttribute(k, attrs[k]);
+    }
+    (kids || []).forEach(function (c) {
+      if (c == null) return;
+      el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    });
+    return el;
+  }
+  function norm(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase(); }
+  function fmtQty(n) {
+    if (n == null || n === '' || isNaN(n)) return '–';
+    return Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
+  }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  // วันที่ พ.ศ. เช่น 18/11/2569 14:30
+  function fmtThai(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return '-';
+    return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + (d.getFullYear() + 543) +
+      ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+  function levelText(lv) {
+    lv = String(lv == null ? '' : lv).trim();
+    if (!lv) return '';
+    return lv === 'พื้น' ? 'พื้น' : 'ระดับ ' + lv;
+  }
+  function levelKey(lv) {
+    lv = String(lv == null ? '' : lv).trim();
+    if (lv === 'พื้น') return 0;
+    var n = parseFloat(lv);
+    return isNaN(n) ? 1e6 : n;
+  }
+
+  // ===== สถานะข้อมูล =====
+  var frameById = {};
+  FRAMES.forEach(function (f) { frameById[f.id] = f; });
+  var prodByCode = new Map();
+  PRODUCTS.forEach(function (p) {
+    prodByCode.set(String(p[0]).toUpperCase(), { code: p[0], name: p[1], unit: p[2], total: p[3] });
+  });
+
+  var state = { mode: 'mock', importedAt: null, locations: DATA.mockLocations.slice() };
+  var locByCode = new Map();     // รหัส(ตัวใหญ่) -> [location]
+  var locByFrame = new Map();    // id กรอบ -> [location]
+  var items = [];                // รายการที่ค้นหาได้
+
+  function rebuild() {
+    locByCode = new Map();
+    locByFrame = new Map();
+    state.locations.forEach(function (l) {
+      var key = String(l.code).toUpperCase();
+      if (!locByCode.has(key)) locByCode.set(key, []);
+      locByCode.get(key).push(l);
+      if (!locByFrame.has(l.frame)) locByFrame.set(l.frame, []);
+      locByFrame.get(l.frame).push(l);
+    });
+    items = [];
+    prodByCode.forEach(function (p) { items.push(p); });
+    // รหัสที่อยู่ในใบจดแต่ไม่มีในรายการสินค้า ก็ให้ค้นเจอ
+    var seen = new Set();
+    state.locations.forEach(function (l) {
+      var key = String(l.code).toUpperCase();
+      if (!prodByCode.has(key) && !seen.has(key)) {
+        seen.add(key);
+        items.push({ code: l.code, name: UNKNOWN_NAME, unit: '', total: null, unknown: true });
+      }
+    });
+    items.forEach(function (it) { it.hay = norm(it.code + ' ' + it.name); it.codeU = String(it.code).toUpperCase(); });
+  }
+
+  // ===== localStorage (ห่อ try/catch ทุกครั้ง) =====
+  function lsGet() { try { return localStorage.getItem(LS_KEY); } catch (e) { return null; } }
+  function lsSet(v) { try { localStorage.setItem(LS_KEY, v); return true; } catch (e) { return false; } }
+  function lsDel() { try { localStorage.removeItem(LS_KEY); return true; } catch (e) { return false; } }
+
+  function loadSaved() {
+    var raw = lsGet();
+    if (!raw) return;
+    try {
+      var o = JSON.parse(raw);
+      if (!o || o.version !== 1 || !Array.isArray(o.locations)) {
+        console.warn('layoutFinder: ข้อมูลที่เก็บไว้เวอร์ชันไม่ตรง ใช้ข้อมูลสมมติแทน');
+        return;
+      }
+      var locs = o.locations.filter(function (l) {
+        return l && typeof l.frame === 'string' && frameById[l.frame] && l.code != null && String(l.code) !== '';
+      });
+      state = { mode: 'real', importedAt: o.importedAt, locations: locs };
+    } catch (e) {
+      console.warn('layoutFinder: อ่านข้อมูลที่เก็บไว้ไม่ได้ ใช้ข้อมูลสมมติแทน', e);
+    }
+  }
+
+  // ===== แถบสถานะ =====
+  function renderStatus() {
+    var el = $('status');
+    if (state.mode === 'mock') {
+      el.className = 'status mock';
+      el.textContent = '⚠ ข้อมูลสมมติ (ยังไม่ได้นำเข้าใบจดจริง)';
+    } else {
+      el.className = 'status real';
+      el.textContent = 'ข้อมูลจากใบจด นำเข้าเมื่อ ' + fmtThai(state.importedAt);
+    }
+    $('btnReset').disabled = state.mode === 'mock';
+  }
+
+  // ===== ผังคลัง =====
+  var minRow = Math.min.apply(null, FRAMES.map(function (f) { return f.r1; }));
+  var frameEls = {};
+  function buildMap() {
+    var map = $('map');
+    map.textContent = '';
+    map.appendChild(h('div', { class: 'colhead c1' }, ['ผนังซ้าย']));
+    map.appendChild(h('div', { class: 'colhead c3' }, ['กลาง']));
+    map.appendChild(h('div', { class: 'colhead c5' }, ['ผนังขวา']));
+    FRAMES.forEach(function (f) {
+      var cls = 'frame ' + (f.store ? 'store ' : 'sign ') +
+        (f.type === 'ชั้นวาง' ? 'shelf' : f.type === 'ตัวอักษร' ? 'letter' : f.type === 'สินค้า' ? 'item' : '');
+      var el = f.store
+        ? h('button', { class: cls, type: 'button', 'data-id': f.id, 'aria-label': 'ดูสินค้าใน ' + f.name })
+        : h('div', { class: cls, 'data-id': f.id });
+      el.style.gridRow = (f.r1 - minRow + 2) + ' / ' + (f.r2 - minRow + 3);
+      el.style.gridColumn = f.c1 + ' / ' + (f.c2 + 1);
+      if (f.color) {
+        el.style.background = '#' + f.color;
+        el.style.color = lumDark(f.color) ? '#111418' : '#ffffff';
+      }
+      el.appendChild(h('span', { class: 'lbl' }, [f.name]));
+      if (f.store) el.addEventListener('click', function () { openSheet(f.id); });
+      map.appendChild(el);
+      frameEls[f.id] = el;
+    });
+    updateCounts();
+  }
+  // สีพื้นสว่างพอให้ใช้ตัวอักษรดำหรือไม่
+  function lumDark(hex) {
+    var r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 140;
+  }
+  function updateCounts() {
+    FRAMES.forEach(function (f) {
+      if (!f.store) return;
+      var el = frameEls[f.id];
+      var old = el.querySelector('.cnt');
+      if (old) old.remove();
+      var n = (locByFrame.get(f.id) || []).length;
+      el.classList.toggle('has-count', n > 0);
+      if (n > 0) el.appendChild(h('span', { class: 'cnt' }, [String(n)]));
+    });
+  }
+
+  // ===== ไฮไลต์กรอบ =====
+  function clearHighlight() {
+    $('map').classList.remove('has-hl');
+    Object.keys(frameEls).forEach(function (k) { frameEls[k].classList.remove('hl'); });
+  }
+  function highlight(ids) {
+    clearHighlight();
+    var first = null;
+    ids.forEach(function (id) {
+      var el = frameEls[id];
+      if (!el) return;
+      el.classList.add('hl');
+      if (!first) first = el;
+    });
+    if (!first) return;
+    $('map').classList.add('has-hl');
+    try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    catch (e) { first.scrollIntoView(); }
+  }
+
+  // ===== ค้นหา =====
+  function search(q) {
+    var query = norm(q);
+    if (!query) return null;
+    var terms = query.split(' ');
+    var found = [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i], ok = true;
+      for (var t = 0; t < terms.length; t++) {
+        if (it.hay.indexOf(terms[t]) < 0) { ok = false; break; }
+      }
+      if (!ok) continue;
+      // เรียงให้ตรงมากสุดขึ้นก่อน: รหัสตรงเป๊ะ > ชื่อขึ้นต้นด้วยคำค้น > มีวลีค้นทั้งก้อน > อื่นๆ
+      var nameN = norm(it.name);
+      var score = it.codeU === query.toUpperCase() ? 0 : nameN.indexOf(query) === 0 ? 1 : it.hay.indexOf(query) >= 0 ? 2 : 3;
+      found.push({ it: it, score: score, idx: i });
+    }
+    found.sort(function (a, b) { return a.score - b.score || a.idx - b.idx; });
+    return found.map(function (x) { return x.it; });
+  }
+
+  function frameLabel(f) { return f ? f.name : '?'; }
+
+  function renderResults() {
+    var box = $('results');
+    box.textContent = '';
+    var list = search($('q').value);
+    if (list === null) {
+      box.appendChild(h('div', { class: 'hint' }, ['พิมพ์ชื่อหรือรหัสสินค้าในช่องค้นหา หรือแตะกรอบในผังด้านล่างเพื่อดูว่ามีอะไรอยู่']));
+      return;
+    }
+    if (!list.length) {
+      box.appendChild(h('div', { class: 'count-line' }, ['ไม่พบสินค้าที่ตรงกับ "' + $('q').value.trim() + '"']));
+      return;
+    }
+    var shown = list.slice(0, MAX_SHOW);
+    box.appendChild(h('div', { class: 'count-line' }, [
+      'พบทั้งหมด ' + list.length + ' รายการ' + (list.length > MAX_SHOW ? ' (แสดง ' + MAX_SHOW + ' รายการแรก พิมพ์เพิ่มเพื่อกรอง)' : '')
+    ]));
+    shown.forEach(function (it) {
+      var locs = (locByCode.get(it.codeU) || []).filter(function (l) { return frameById[l.frame]; });
+      var card = h('div', { class: 'res' + (locs.length ? ' clickable' : ''), 'data-code': it.code }, [
+        h('div', { class: 'nm' }, [it.name]),
+        h('div', { class: 'cd' }, ['รหัส ' + it.code])
+      ]);
+      if (locs.length) {
+        var wrap = h('div', { class: 'locs' });
+        locs.forEach(function (l) {
+          var f = frameById[l.frame];
+          var lv = levelText(l.level);
+          var btn = h('button', { class: 'loc', type: 'button', 'data-frame': l.frame }, [
+            h('span', { class: 'pin' }, ['📍 ' + frameLabel(f) + (lv ? ' · ' + lv : '')]),
+            h('span', { class: 'qty' }, [fmtQty(l.qty) + (it.unit ? ' ' + it.unit : '')])
+          ]);
+          btn.addEventListener('click', function (ev) { ev.stopPropagation(); highlight([l.frame]); });
+          wrap.appendChild(btn);
+        });
+        card.appendChild(wrap);
+        card.addEventListener('click', function () {
+          highlight(locs.map(function (l) { return l.frame; }));
+        });
+      } else {
+        card.appendChild(h('span', { class: 'noloc' }, ['ยังไม่ระบุตำแหน่ง']));
+      }
+      box.appendChild(card);
+    });
+  }
+
+  // ===== bottom sheet รายการในกรอบ =====
+  var lastFocus = null;
+  function openSheet(id) {
+    var f = frameById[id];
+    if (!f) return;
+    var locs = (locByFrame.get(id) || []).slice().sort(function (a, b) {
+      var d = levelKey(a.level) - levelKey(b.level);
+      return d || String(a.code).localeCompare(String(b.code));
+    });
+    $('sheetTitle').textContent = f.name;
+    $('sheetMeta').textContent = locs.length ? locs.length + ' รายการ' : 'ยังไม่มีรายการ';
+    var body = $('sheetBody');
+    body.textContent = '';
+    if (!locs.length) body.appendChild(h('div', { class: 'empty' }, ['ยังไม่มีสินค้าในกรอบนี้']));
+    locs.forEach(function (l) {
+      var p = prodByCode.get(String(l.code).toUpperCase());
+      var unit = p ? p.unit : '';
+      body.appendChild(h('div', { class: 'it' }, [
+        h('div', { class: 'lv' }, [levelText(l.level) || '–']),
+        h('div', { class: 'n' }, [p ? p.name : UNKNOWN_NAME]),
+        h('div', { class: 'q' }, [fmtQty(l.qty) + (unit ? ' ' + unit : '')]),
+        h('div', { class: 'c' }, ['รหัส ' + l.code]),
+        l.note ? h('div', { class: 'note' }, ['หมายเหตุ: ' + l.note]) : null
+      ]));
+    });
+    body.scrollTop = 0;
+    lastFocus = document.activeElement;
+    $('backdrop').classList.add('open');
+    $('sheet').classList.add('open');
+    document.body.classList.add('lock');
+    $('sheetClose').focus();
+  }
+  function closeSheet() {
+    $('backdrop').classList.remove('open');
+    $('sheet').classList.remove('open');
+    document.body.classList.remove('lock');
+    if (lastFocus && lastFocus.focus) { try { lastFocus.focus({ preventScroll: true }); } catch (e) {} }
+  }
+
+  // ===== นำเข้าใบจด =====
+  var xlsxPromise = null;
+  function loadXLSX() {
+    if (window.XLSX) return Promise.resolve();
+    if (xlsxPromise) return xlsxPromise;
+    xlsxPromise = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = XLSX_URL;
+      s.onload = function () { window.XLSX ? resolve() : reject(new Error('no XLSX')); };
+      s.onerror = function () { reject(new Error('load fail')); };
+      document.head.appendChild(s);
+    }).catch(function (e) { xlsxPromise = null; throw e; });
+    return xlsxPromise;
+  }
+
+  function showMsg(kind, lines, list) {
+    var box = $('importMsg');
+    box.textContent = '';
+    var inner = h('div', { class: 'box ' + kind }, lines.map(function (t) { return h('div', null, [t]); }));
+    if (list && list.length) {
+      var ul = h('ul');
+      list.forEach(function (t) { ul.appendChild(h('li', null, [t])); });
+      inner.appendChild(ul);
+    }
+    box.appendChild(inner);
+  }
+
+  // อ่านค่ารหัส: ตัวเลข -> สตริงเต็ม (ไม่ใช่ 5.6e+11), ข้อความ -> trim
+  function cellStr(v) {
+    if (v == null) return '';
+    if (typeof v === 'number') return isFinite(v) ? String(v) : '';
+    return String(v).trim();
+  }
+  function cellQty(v) {
+    if (typeof v === 'number') return isFinite(v) ? v : null;
+    var s = String(v == null ? '' : v).replace(/,/g, '').trim();
+    if (!s) return null;
+    var n = Number(s);
+    return isNaN(n) ? null : n;
+  }
+
+  // อ่านทุกชีตที่ชื่อตรงกับกรอบ (ทำชีต=Y) แถว 6 เป็นต้นไป: B=ระดับ C=รหัส F=จำนวน G=หมายเหตุ
+  function parseWorkbook(wb) {
+    var locs = [], sheets = 0, unknown = [];
+    FRAMES.forEach(function (f) {
+      if (!f.store) return;
+      var ws = wb.Sheets[f.id];
+      if (!ws) return;
+      sheets++;
+      var ref = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+      var endR = Math.max(ref.e.r, 5);
+      var rows = XLSX.utils.sheet_to_json(ws, {
+        header: 1, raw: true, defval: '',
+        range: { s: { r: 5, c: 0 }, e: { r: endR, c: 6 } }
+      });
+      rows.forEach(function (r) {
+        var code = cellStr(r[2]);
+        if (!code) return;
+        var p = prodByCode.get(code.toUpperCase());
+        var loc = {
+          frame: f.id,
+          level: cellStr(r[1]),
+          code: p ? p.code : code,
+          qty: cellQty(r[5]),
+          note: cellStr(r[6])
+        };
+        if (!p) unknown.push(code + ' (' + f.name + ')');
+        locs.push(loc);
+      });
+    });
+    return { locs: locs, sheets: sheets, unknown: unknown };
+  }
+
+  function onFileChosen(ev) {
+    var input = ev.target;
+    var file = input.files && input.files[0];
+    if (!file) return;
+    showMsg('warn', ['กำลังอ่านไฟล์ ' + file.name + ' ...']);
+    loadXLSX().then(function () {
+      return file.arrayBuffer();
+    }, function () {
+      throw { friendly: 'โหลดตัวอ่าน Excel ไม่ได้ ตรวจอินเทอร์เน็ต' };
+    }).then(function (buf) {
+      var wb = XLSX.read(buf, { type: 'array' });
+      var res = parseWorkbook(wb);
+      if (!res.locs.length) {
+        showMsg('err', ['ไฟล์นี้ไม่มีข้อมูลใบจด (อ่าน ' + res.sheets + ' ชีต · 0 รายการ) ไม่มีการแทนที่ข้อมูลเดิม']);
+        return;
+      }
+      if (!window.confirm('แทนที่ตำแหน่งสินค้าทั้งหมดด้วยข้อมูลจากไฟล์นี้?\n(พบ ' + res.locs.length + ' รายการ จาก ' + res.sheets + ' ชีต)')) {
+        showMsg('warn', ['ยกเลิกการนำเข้า ข้อมูลเดิมไม่เปลี่ยน']);
+        return;
+      }
+      var importedAt = new Date().toISOString();
+      state = { mode: 'real', importedAt: importedAt, locations: res.locs };
+      var saved = lsSet(JSON.stringify({ version: 1, importedAt: importedAt, locations: res.locs }));
+      afterDataChange();
+      var lines = ['อ่าน ' + res.sheets + ' ชีต · ' + res.locs.length + ' รายการ · รหัสไม่พบ ' + res.unknown.length];
+      if (!saved) lines.push('เก็บลงเครื่องไม่ได้ ข้อมูลนี้จะหายเมื่อปิดหรือรีเฟรชหน้า');
+      showMsg(res.unknown.length || !saved ? 'warn' : 'ok', lines, res.unknown.length ? res.unknown : null);
+    }).catch(function (e) {
+      if (e && e.friendly) showMsg('err', [e.friendly]);
+      else {
+        console.warn('layoutFinder: นำเข้าไม่สำเร็จ', e);
+        showMsg('err', ['อ่านไฟล์ไม่สำเร็จ ตรวจว่าเป็นไฟล์ .xlsx ที่ถูกต้อง']);
+      }
+    }).then(function () { input.value = ''; });
+  }
+
+  function resetToMock() {
+    if (!window.confirm('กลับไปใช้ข้อมูลสมมติ? ข้อมูลที่นำเข้าไว้จะถูกลบออกจากเครื่องนี้')) return;
+    lsDel();
+    state = { mode: 'mock', importedAt: null, locations: DATA.mockLocations.slice() };
+    afterDataChange();
+    showMsg('ok', ['กลับไปใช้ข้อมูลสมมติแล้ว']);
+  }
+
+  function afterDataChange() {
+    rebuild();
+    renderStatus();
+    updateCounts();
+    clearHighlight();
+    renderResults();
+  }
+
+  // ===== เริ่มทำงาน =====
+  loadSaved();
+  rebuild();
+  buildMap();
+  renderStatus();
+  renderResults();
+
+  var timer = null;
+  $('q').addEventListener('input', function () {
+    clearTimeout(timer);
+    timer = setTimeout(function () { clearHighlight(); renderResults(); }, 150);
+  });
+  $('clear').addEventListener('click', function () {
+    clearTimeout(timer);
+    $('q').value = '';
+    clearHighlight();
+    renderResults();
+    $('q').focus();
+  });
+  $('btnImport').addEventListener('click', function () { $('file').click(); });
+  $('file').addEventListener('change', onFileChosen);
+  $('btnReset').addEventListener('click', resetToMock);
+  $('sheetClose').addEventListener('click', closeSheet);
+  $('backdrop').addEventListener('click', closeSheet);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
+})();
+</script>
+</body>
+</html>
