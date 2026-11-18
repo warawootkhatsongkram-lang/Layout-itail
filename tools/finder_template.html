@@ -32,11 +32,9 @@
   --err-bg: #ffe0e0;
   --err-fg: #7a1010;
   --hl: #e03131;
-  --f-shelf: #ddebf7;
-  --f-letter: #ededed;
-  --f-item: #fff2cc;
-  --f-sign: transparent;
-  --f-fg: #111418;
+  --map-paper: #ffffff;
+  --map-blue: #4472c4;
+  --map-red: #ff0000;
   --shadow: 0 1px 3px rgba(0,0,0,.18);
   --font: 'Sarabun', 'Noto Sans Thai', 'Tahoma', system-ui, sans-serif;
 }
@@ -63,10 +61,6 @@
     --err-bg: #4a1616;
     --err-fg: #ffd2d2;
     --hl: #ff6b6b;
-    --f-shelf: #2b4560;
-    --f-letter: #343b46;
-    --f-item: #5a4a16;
-    --f-fg: #f1f3f5;
     --shadow: 0 1px 3px rgba(0,0,0,.6);
   }
 }
@@ -177,56 +171,46 @@ h1, h2 { margin: 0; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 13px; margin-bottom: 8px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .legend i { width: 14px; height: 14px; border: 1.5px solid var(--border-strong); display: inline-block; }
-.map {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) 12px minmax(0,1fr) 12px minmax(0,1fr);
-  grid-auto-rows: 42px;
-  gap: 4px 0;
-  width: 100%;
+.legend i.wall { height: 0; width: 18px; border: 0; border-top: 3px solid var(--map-red); }
+.zoombar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.zoombar .btn { min-height: 44px; min-width: 48px; padding: 0 14px; }
+.zoombar .zl { color: var(--muted); font-size: 13px; margin-left: auto; }
+/* ผัง: วางกรอบตามพิกัดจริง (1 ช่อง = --u px) เลื่อนซ้าย-ขวาได้ ผืนผังเป็นกระดาษขาวทั้งโหมดสว่าง/มืด */
+.mapscroll {
+  overflow-x: auto; overflow-y: hidden;
+  background: var(--map-paper);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  -webkit-overflow-scrolling: touch;
 }
-.map .colhead {
-  grid-row: 1;
-  align-self: end;
-  text-align: center;
-  font-size: 12px; font-weight: 600; color: var(--muted);
-  height: 22px; line-height: 22px;
-}
-.map .colhead.c1 { grid-column: 1; }
-.map .colhead.c3 { grid-column: 3; }
-.map .colhead.c5 { grid-column: 5; }
+.map { position: relative; --u: 8px; margin: 0; }
+.map svg.decor { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; overflow: visible; }
 .frame {
-  position: relative;
-  display: flex; align-items: center; justify-content: center;
-  min-width: 0; height: 100%;
-  padding: 2px 5px;
-  border: 1.5px solid var(--border-strong);
-  border-radius: 0;
-  background: var(--card);
-  color: var(--f-fg);
-  font-size: 12px; line-height: 1.15; font-weight: 600;
+  position: absolute; z-index: 2;
+  display: flex; justify-content: center;
+  margin: 0; padding: 0 2px;
+  border: 0; border-radius: 0; box-sizing: border-box;
+  background: transparent;
+  color: #111418;
+  font-family: inherit; font-weight: 700; line-height: 1.15;
   text-align: center;
   transition: opacity .2s;
 }
-.frame .lbl {
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; overflow-wrap: anywhere; word-break: break-word;
-}
-.frame.shelf { background: var(--f-shelf); }
-.frame.letter { background: var(--f-letter); }
-.frame.item { background: var(--f-item); }
-.frame.sign { background: var(--f-sign); border-style: solid; cursor: default; }
+.frame { align-items: flex-start; }
+.frame .lbl { width: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.frame .lbl span { display: block; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
 .frame.store { cursor: pointer; }
-.frame.has-count { padding-right: 17px; }
+.frame.sign { cursor: default; }
 .frame .cnt {
-  position: absolute; top: 1px; right: 2px;
+  position: absolute; top: -7px; right: -6px; z-index: 4;
   min-width: 15px; padding: 0 3px;
-  border-radius: 8px;
-  background: var(--border-strong); color: var(--bg);
+  border-radius: 8px; border: 1px solid #fff;
+  background: #111418; color: #fff;
   font-size: 10px; line-height: 15px; font-weight: 700;
 }
-.map.has-hl .frame:not(.hl) { opacity: .28; }
+.map.has-hl .frame:not(.hl), .map.has-hl svg.decor { opacity: .28; }
 .frame.hl {
-  z-index: 3;
+  z-index: 5;
   outline: 4px solid var(--hl);
   outline-offset: 0;
   animation: blink .9s ease-in-out infinite;
@@ -299,12 +283,17 @@ h1, h2 { margin: 0; }
     <h2>ผังคลัง</h2>
     <div class="sub">แตะกรอบเพื่อดูสินค้าในกรอบนั้น · ตัวเลขมุมกรอบ = จำนวนรายการ</div>
     <div class="legend">
-      <span><i style="background:var(--f-shelf)"></i>ชั้นวาง</span>
-      <span><i style="background:var(--f-letter)"></i>ตัวอักษร</span>
-      <span><i style="background:var(--f-item)"></i>สินค้า</span>
-      <span><i style="background:transparent"></i>ป้าย/พื้นที่</span>
+      <span><i style="background:#4472c4"></i>กรอบเก็บของ (แตะได้)</span>
+      <span><i style="background:#ffc000"></i>ป้าย/โซน (แตะไม่ได้)</span>
+      <span><i class="wall"></i>ผนัง</span>
     </div>
-    <div id="map" class="map"></div>
+    <div class="zoombar">
+      <button id="zoomOut" class="btn" type="button" aria-label="ย่อผัง">−</button>
+      <button id="zoomIn" class="btn" type="button" aria-label="ขยายผัง">+</button>
+      <button id="zoomFit" class="btn" type="button">พอดีจอ</button>
+      <span class="zl">เลื่อนซ้าย-ขวาได้</span>
+    </div>
+    <div id="mapScroll" class="mapscroll"><div id="map" class="map"></div></div>
   </section>
 
   <section class="manage">
@@ -455,38 +444,154 @@ h1, h2 { margin: 0; }
   }
 
   // ===== ผังคลัง =====
-  var minRow = Math.min.apply(null, FRAMES.map(function (f) { return f.r1; }));
+  // วางกรอบตามพิกัดช่องกริดใน layout_config.csv (X,Y = มุมซ้ายบนนับจาก 1, กว้าง/สูง = จำนวนช่อง)
+  // 1 ช่อง = U px (ปรับได้ด้วยปุ่ม + − พอดีจอ) ส่วนตกแต่ง (ผนัง/วงเล็บ/ลูกศร/แถบ) วาดเป็น SVG ทับกรอบ
+  var DECOR = DATA.decor || [];
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var MAP_BLUE = '4472C4', RED = 'FF0000';
+  var U_MIN = 4, U_MAX = 20;
+  var U = 8;
   var frameEls = {};
+  var BOUNDS = (function () {
+    var all = FRAMES.concat(DECOR);
+    var x0 = Math.min.apply(null, all.map(function (f) { return f.x - 1; })) - 1;
+    var y0 = Math.min.apply(null, all.map(function (f) { return f.y - 1; })) - 1;
+    var x1 = Math.max.apply(null, all.map(function (f) { return f.x + f.w - 1; })) + 1;
+    var y1 = Math.max.apply(null, all.map(function (f) { return f.y + f.h - 1; })) + 1;
+    return { x0: x0, y0: y0, w: x1 - x0, h: y1 - y0 };
+  })();
+
+  // ความสว่างสัมพัทธ์ (WCAG) และสีขอบเข้ม — สูตรเดียวกับ build_layout.py เพื่อให้สีตรงกับผัง Excel
+  function relLum(hex) {
+    function ch(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+    return 0.2126 * ch(parseInt(hex.slice(0, 2), 16)) + 0.7152 * ch(parseInt(hex.slice(2, 4), 16)) + 0.0722 * ch(parseInt(hex.slice(4, 6), 16));
+  }
+  function shade(hex, k) {
+    var o = '';
+    for (var i = 0; i < 6; i += 2) { var v = Math.floor(parseInt(hex.slice(i, i + 2), 16) * k); o += (v < 16 ? '0' : '') + v.toString(16); }
+    return '#' + o;
+  }
+  function svgEl(tag, attrs) {
+    var el = document.createElementNS(SVGNS, tag);
+    for (var k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  // วาดตกแต่งเป็น SVG หน่วย = ช่องกริด (stroke ใช้ px คงที่ ไม่ขยายตามซูม)
+  function buildDecor() {
+    var svg = svgEl('svg', { class: 'decor', viewBox: BOUNDS.x0 + ' ' + BOUNDS.y0 + ' ' + BOUNDS.w + ' ' + BOUNDS.h, 'aria-hidden': 'true' });
+    function line(x1, y1, x2, y2, col, wpx) {
+      svg.appendChild(svgEl('line', { x1: x1, y1: y1, x2: x2, y2: y2, stroke: col, 'stroke-width': wpx,
+        'vector-effect': 'non-scaling-stroke', 'stroke-linecap': 'square' }));
+    }
+    DECOR.forEach(function (d) {
+      var L = d.x - 1, T = d.y - 1, W = d.w, H = d.h, col = '#' + (d.color || RED);
+      if (d.type === 'ผนัง') {
+        if (W === 1) line(L, T, L, T + H, col, 3);        // เส้นตั้ง ตามขอบซ้ายของคอลัมน์ X
+        else line(L, T, L + W, T, col, 3);                // เส้นนอน ตามขอบบนของแถว Y
+      } else if (d.type === 'วงเล็บ') {
+        var half, tipLeft, tipUp, sp;
+        if (H >= W) {                                     // ปีกกาตั้ง: เส้นกลาง + ขีดหัว/ท้าย + ปลายแหลมกลาง
+          half = Math.floor(W / 2); tipLeft = d.name.indexOf('ซ้าย') >= 0;
+          sp = L + half;
+          line(sp, T, sp, T + H, col, 1.4);
+          line(tipLeft ? sp : L, T, tipLeft ? L + W : sp, T, col, 1.4);
+          line(tipLeft ? sp : L, T + H, tipLeft ? L + W : sp, T + H, col, 1.4);
+          var my = T + Math.floor(H / 2);
+          line(tipLeft ? L : sp, my, tipLeft ? sp : L + W, my, col, 1.4);
+        } else {                                          // ปีกกานอน
+          half = Math.floor(H / 2); tipUp = d.name.indexOf('ขึ้น') >= 0;
+          sp = tipUp ? T + half : T + H - half;
+          line(L, sp, L + W, sp, col, 1.4);
+          var a1 = tipUp ? sp : T, a2 = tipUp ? T + H : sp;      // ขีดข้างฝั่งตรงข้ามปลายแหลม
+          line(L, a1, L, a2, col, 1.4);
+          line(L + W, a1, L + W, a2, col, 1.4);
+          var m = L + Math.floor(W / 2);
+          line(m, tipUp ? T : sp, m, tipUp ? sp : T + H, col, 1.4);
+        }
+      } else if (d.type === 'ลูกศรขึ้น' || d.type === 'ลูกศรลง') {
+        var up = d.type === 'ลูกศรขึ้น', hd = 3, mid = L + Math.floor(W / 2);
+        var cx = L + W / 2;
+        svg.appendChild(svgEl('polygon', { fill: col, points: up
+          ? cx + ',' + T + ' ' + (L + W) + ',' + (T + hd) + ' ' + L + ',' + (T + hd)
+          : L + ',' + (T + H - hd) + ' ' + (L + W) + ',' + (T + H - hd) + ' ' + cx + ',' + (T + H) }));
+        svg.appendChild(svgEl('rect', { fill: col, x: mid, width: 1, y: up ? T + hd : T, height: H - hd }));
+      } else if (d.type === 'แถบ') {
+        svg.appendChild(svgEl('rect', { x: L, y: T, width: W, height: H, fill: col,
+          stroke: shade(d.color || 'FFC000', 0.5), 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke' }));
+      }
+    });
+    return svg;
+  }
+
   function buildMap() {
     var map = $('map');
     map.textContent = '';
-    map.appendChild(h('div', { class: 'colhead c1' }, ['ผนังซ้าย']));
-    map.appendChild(h('div', { class: 'colhead c3' }, ['กลาง']));
-    map.appendChild(h('div', { class: 'colhead c5' }, ['ผนังขวา']));
+    frameEls = {};
     FRAMES.forEach(function (f) {
-      var cls = 'frame ' + (f.store ? 'store ' : 'sign ') +
-        (f.type === 'ชั้นวาง' ? 'shelf' : f.type === 'ตัวอักษร' ? 'letter' : f.type === 'สินค้า' ? 'item' : '');
       var el = f.store
-        ? h('button', { class: cls, type: 'button', 'data-id': f.id, 'aria-label': 'ดูสินค้าใน ' + f.name })
-        : h('div', { class: cls, 'data-id': f.id });
-      el.style.gridRow = (f.r1 - minRow + 2) + ' / ' + (f.r2 - minRow + 3);
-      el.style.gridColumn = f.c1 + ' / ' + (f.c2 + 1);
-      if (f.color) {
-        el.style.background = '#' + f.color;
-        el.style.color = lumDark(f.color) ? '#111418' : '#ffffff';
-      }
-      el.appendChild(h('span', { class: 'lbl' }, [f.name]));
+        ? h('button', { class: 'frame store', type: 'button', 'data-id': f.id, 'aria-label': 'ดูสินค้าใน ' + f.name })
+        : h('div', { class: 'frame sign', 'data-id': f.id });
+      var fc = f.color || (f.store ? MAP_BLUE : 'FFFFFF');          // ป้ายไม่ระบุสี = พื้นขาว ไม่มีขอบ
+      el.style.background = '#' + fc;
+      el.style.color = relLum(fc) >= 0.3 ? '#000000' : '#ffffff';
+      if (fc !== 'FFFFFF') el.style.border = '2px solid ' + shade(fc, 0.55);
+      el.appendChild(h('div', { class: 'lbl' }, [h('span', null, [f.name])]));
       if (f.store) el.addEventListener('click', function () { openSheet(f.id); });
       map.appendChild(el);
       frameEls[f.id] = el;
     });
+    map.appendChild(buildDecor());
     updateCounts();
+    applyScale();
   }
-  // สีพื้นสว่างพอให้ใช้ตัวอักษรดำหรือไม่
-  function lumDark(hex) {
-    var r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
-    return (0.299 * r + 0.587 * g + 0.114 * b) > 140;
+
+  // ตั้งตำแหน่ง/ขนาดทุกชิ้นตาม U แล้วปรับขนาดตัวอักษรให้พอดีกรอบ
+  function applyScale() {
+    var map = $('map');
+    map.style.setProperty('--u', U + 'px');
+    map.style.width = BOUNDS.w * U + 'px';
+    map.style.height = BOUNDS.h * U + 'px';
+    var svg = map.querySelector('svg.decor');
+    svg.setAttribute('width', BOUNDS.w * U);
+    svg.setAttribute('height', BOUNDS.h * U);
+    FRAMES.forEach(function (f) {
+      var el = frameEls[f.id];
+      el.style.left = (f.x - 1 - BOUNDS.x0) * U + 'px';
+      el.style.top = (f.y - 1 - BOUNDS.y0) * U + 'px';
+      el.style.width = f.w * U + 'px';
+      el.style.height = f.h * U + 'px';
+      var lbl = el.firstChild;
+      lbl.style.height = (f.lh * U - (f.color !== 'FFFFFF' && (f.store || f.color) ? (f.lh === f.h ? 4 : 2) : 0)) + 'px';   // หักขอบกรอบ 2px
+      fitLabel(f, el, lbl);
+    });
+    var z = $('zoomFit');
+    if (z) { $('zoomOut').disabled = U <= U_MIN + 0.01; $('zoomIn').disabled = U >= U_MAX - 0.01; }
   }
+  function fitLabel(f, el, lbl) {
+    var span = lbl.firstChild;
+    var size = Math.min(U * 1.5, 15);
+    if (f.name.toLowerCase() === 'office') size = U * 6;
+    else if (f.name.indexOf('โซนรหัส') === 0 && f.h >= 6) size = U * 2.3;
+    var min = 6.5;
+    el.style.fontSize = size + 'px';
+    while (size > min && (span.scrollHeight > lbl.clientHeight + 1 || span.scrollWidth > lbl.clientWidth + 1)) {
+      size -= 0.5;
+      el.style.fontSize = size + 'px';
+    }
+  }
+  function setScale(u) {
+    U = Math.max(U_MIN, Math.min(U_MAX, u));
+    // รักษาจุดกึ่งกลางของจอไว้ตอนซูม
+    var sc = $('mapScroll');
+    var mid = (sc.scrollLeft + sc.clientWidth / 2) / (BOUNDS.w * (sc._u || U));
+    sc._u = U;
+    applyScale();
+    sc.scrollLeft = mid * BOUNDS.w * U - sc.clientWidth / 2;
+  }
+  function fitU() { return Math.max(U_MIN, Math.min(U_MAX, $('mapScroll').clientWidth / BOUNDS.w)); }
+  function initialU() { return Math.max(8, Math.min(11, fitU())); }   // เริ่มต้นให้อ่านออก (มือถือเลื่อนซ้าย-ขวาได้)
+
   function updateCounts() {
     FRAMES.forEach(function (f) {
       if (!f.store) return;
@@ -494,7 +599,6 @@ h1, h2 { margin: 0; }
       var old = el.querySelector('.cnt');
       if (old) old.remove();
       var n = (locByFrame.get(f.id) || []).length;
-      el.classList.toggle('has-count', n > 0);
       if (n > 0) el.appendChild(h('span', { class: 'cnt' }, [String(n)]));
     });
   }
@@ -515,7 +619,7 @@ h1, h2 { margin: 0; }
     });
     if (!first) return;
     $('map').classList.add('has-hl');
-    try { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    try { first.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); }
     catch (e) { first.scrollIntoView(); }
   }
 
@@ -754,7 +858,12 @@ h1, h2 { margin: 0; }
   // ===== เริ่มทำงาน =====
   loadSaved();
   rebuild();
+  U = initialU();
+  $('mapScroll')._u = U;
   buildMap();
+  $('zoomIn').addEventListener('click', function () { setScale(U * 1.25); });
+  $('zoomOut').addEventListener('click', function () { setScale(U / 1.25); });
+  $('zoomFit').addEventListener('click', function () { setScale(fitU()); });
   renderStatus();
   renderResults();
 

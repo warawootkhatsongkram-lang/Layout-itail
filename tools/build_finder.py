@@ -10,7 +10,7 @@ build_finder.py — สร้างเว็บ "หาของในคลั�
     ผังใน Excel กับผังในเว็บจะตรงกัน เพราะอ่านจาก layout_config.csv ตัวเดียวกัน
 
 สิ่งที่สคริปต์นี้ทำ:
-    - อ่าน layout_config.csv  -> frames (กรอบบนผัง: แถว/คอลัมน์/สี/ประเภท)
+    - อ่าน layout_config.csv  -> frames (กรอบบนผัง: X/Y/กว้าง/สูง/สี/ประเภท) + decor (ผนัง/วงเล็บ/ลูกศร/แถบ)
     - อ่านชีต "สินค้า" ใน LAY_OUT_01.xlsx (ข้าม Grand Total) -> products
     - สร้าง "ตำแหน่งสมมติ" (mockLocations) เพราะยังไม่มีข้อมูลจริง
         * จับคู่ชื่อกรอบกับสินค้าด้วย MOCK_KEYWORDS (ค้นคำใน DESCRIPTION)
@@ -26,7 +26,6 @@ build_finder.py — สร้างเว็บ "หาของในคลั�
 import csv
 import json
 import random
-import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -91,32 +90,28 @@ def norm(text):
     return " ".join(str(text).split()).lower()
 
 
-def col_index(letter):
-    """B=1, C=2, D=3, E=4, F=5 (คอลัมน์ในกริดของผัง)"""
-    return ord(letter.strip().upper()) - ord("B") + 1
-
-
-def parse_rows(text):
-    """'12' -> (12, 12) / '55~57' -> (55, 57)"""
-    parts = re.split(r"\s*[~\-]\s*", str(text).strip())
-    a = int(parts[0])
-    b = int(parts[-1])
-    return a, b
-
-
-def parse_cols(text):
-    """'B' -> (1, 1) / 'B:F' -> (1, 5)"""
-    parts = str(text).strip().split(":")
-    return col_index(parts[0]), col_index(parts[-1])
+# ประเภทตกแต่ง (ไม่ใช่กรอบ ไม่มีใบจด ไม่ต้องกดได้) - ต้องตรงกับ build_layout.py
+DECOR_TYPES = ("ผนัง", "วงเล็บ", "ลูกศรขึ้น", "ลูกศรลง", "แถบ")
 
 
 def read_frames():
-    """อ่าน layout_config.csv (UTF-8 BOM) -> list ของกรอบ"""
-    frames = []
+    """อ่าน layout_config.csv (UTF-8 BOM) -> (frames, decor)
+    พิกัด X,Y = มุมซ้ายบน นับจาก 1, กว้าง/สูง = จำนวนช่อง (หน่วยเดียวกับ build_layout.py)
+    frames = กรอบ/ป้าย (store=True คือกดได้) | decor = ผนัง/วงเล็บ/ลูกศร/แถบ"""
+    frames, decor = [], []
     seen_ids = set()
     with open(CSV_PATH, encoding="utf-8-sig", newline="") as f:
         for row in csv.DictReader(f):
+            name = (row["ชื่อในผัง"] or "").strip()
+            if not name:
+                continue  # ข้ามบรรทัดว่าง (เหมือน build_layout.py)
             seq = int(row["ลำดับ"])
+            typ = row["ประเภท"].strip()
+            x, y, w, h = (int(float(row[k])) for k in ("X", "Y", "กว้าง", "สูง"))
+            color = row["สีพื้น"].strip().lstrip("#").upper()
+            if typ in DECOR_TYPES:
+                decor.append({"type": typ, "name": name, "x": x, "y": y, "w": w, "h": h, "color": color})
+                continue
             store = row["ทำชีต"].strip().upper() == "Y"
             sheet = row["ชื่อชีต"].strip()
             if store:
@@ -128,18 +123,25 @@ def read_frames():
             if frame_id in seen_ids:
                 raise SystemExit(f"id กรอบซ้ำ: {frame_id}")
             seen_ids.add(frame_id)
-            r1, r2 = parse_rows(row["แถว"])
-            c1, c2 = parse_cols(row["คอลัมน์"])
-            color = row["สีพื้น"].strip().lstrip("#").upper()
             frames.append({
                 "id": frame_id,
-                "name": row["ชื่อในผัง"].strip(),
-                "type": row["ประเภท"].strip(),
+                "name": name,
+                "type": typ,
                 "store": store,
-                "r1": r1, "r2": r2, "c1": c1, "c2": c2,
+                "x": x, "y": y, "w": w, "h": h,
+                "lh": h,            # จำนวนแถวส่วนบนที่ใช้วางข้อความ (กรอบใหญ่ที่ครอบกรอบเล็ก เช่น office)
                 "color": color,
             })
-    return frames
+    # กรอบใหญ่ที่มีกรอบเล็กอยู่ข้างใน: ข้อความอยู่เฉพาะส่วนบนที่ไม่มีกรอบเล็ก (ตามกติกาเดียวกับ build_layout.py)
+    for big in frames:
+        for sm in frames:
+            if sm is big:
+                continue
+            inside = (sm["x"] >= big["x"] and sm["y"] > big["y"] and
+                      sm["x"] + sm["w"] <= big["x"] + big["w"] and sm["y"] + sm["h"] <= big["y"] + big["h"])
+            if inside:
+                big["lh"] = min(big["lh"], sm["y"] - big["y"])
+    return frames, decor
 
 
 def read_products():
@@ -209,13 +211,14 @@ def make_mock_locations(frames, products):
 
 
 def main():
-    frames = read_frames()
+    frames, decor = read_frames()
     products = read_products()
     locations, matched_count, random_count = make_mock_locations(frames, products)
 
     data = {
         "generatedAt": datetime.now().replace(microsecond=0).isoformat(),
         "frames": frames,
+        "decor": decor,
         "products": products,
         "mockLocations": locations,
     }
@@ -228,7 +231,7 @@ def main():
     OUT_PATH.write_text(template.replace(PLACEHOLDER, payload), encoding="utf-8")
 
     store_frames = [f for f in frames if f["store"]]
-    print(f"กรอบทั้งหมด {len(frames)} (กรอบเก็บของ {len(store_frames)}, ป้าย {len(frames) - len(store_frames)})")
+    print(f"กรอบทั้งหมด {len(frames)} (กรอบเก็บของ {len(store_frames)}, ป้าย {len(frames) - len(store_frames)}) + ตกแต่ง {len(decor)}")
     print(f"สินค้า {len(products)} รายการ")
     print("จับคู่ต่อกรอบ:")
     for f in frames:
