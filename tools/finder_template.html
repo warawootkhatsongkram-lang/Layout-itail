@@ -95,8 +95,9 @@ h1, h2 { margin: 0; }
   font-weight: 600;
   font-size: 15px;
 }
-.status.mock { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
-.status.real { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-border); }
+.status .l2 { margin-top: 3px; font-weight: 400; font-size: 14px; }
+.status.warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
+.status.ok { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-border); }
 
 /* ช่องค้นหา (sticky) */
 .searchbar {
@@ -155,7 +156,8 @@ h1, h2 { margin: 0; }
   text-align: left;
 }
 .loc .pin { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
-.loc .qty { flex: 0 0 auto; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.loc .qty { flex: 0 1 auto; min-width: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; text-align: right; }
+.loc.nomap { background: var(--none-bg); color: var(--none-fg); cursor: default; }
 .noloc {
   display: inline-block; margin-top: 8px;
   padding: 8px 12px; min-height: 36px;
@@ -227,12 +229,28 @@ h1, h2 { margin: 0; }
 .manage p { margin: 4px 0 10px; color: var(--muted); font-size: 14px; }
 .manage .btns { display: flex; flex-direction: column; gap: 10px; }
 .manage .btn { width: 100%; }
+.drop {
+  display: block; width: 100%; min-height: 84px; padding: 14px 12px;
+  border: 3px dashed var(--border-strong); border-radius: 12px;
+  background: transparent; color: var(--fg);
+  text-align: center; font-weight: 600; line-height: 1.5;
+}
+.drop.over { background: var(--ok-bg); border-color: var(--ok-border); }
+.drop small { display: block; color: var(--muted); font-weight: 400; font-size: 13px; }
+.pvbar { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+#preview { margin-top: 12px; }
+#preview .box ul { max-height: 220px; overflow-y: auto; }
+.pw { width: 100%; height: 52px; padding: 0 14px; font: inherit; font-size: 18px; color: var(--fg); background: var(--card); border: 2px solid var(--border-strong); border-radius: 10px; }
+.pwerr { margin-top: 8px; color: var(--err-fg); background: var(--err-bg); border-radius: 8px; padding: 6px 10px; }
+.dbg { margin: 0 0 40px; padding: 10px 12px; background: #101418; color: #d7ffd7; border: 2px dashed #3fb950; border-radius: 8px; font-size: 12px; }
+.dbg summary { cursor: pointer; font-weight: 700; color: #7ee787; }
+.dbg pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0; font-family: ui-monospace, Menlo, Consolas, monospace; }
 #importMsg { margin-top: 12px; font-size: 15px; }
-#importMsg .box { padding: 10px 12px; border-radius: 8px; border: 2px solid; overflow-wrap: anywhere; }
-#importMsg .box.ok { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-border); }
-#importMsg .box.warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
-#importMsg .box.err { background: var(--err-bg); color: var(--err-fg); border-color: var(--hl); }
-#importMsg ul { margin: 6px 0 0; padding-left: 20px; }
+#importMsg .box, #preview .box { padding: 10px 12px; border-radius: 8px; border: 2px solid; overflow-wrap: anywhere; }
+#importMsg .box.ok, #preview .box.ok { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-border); }
+#importMsg .box.warn, #preview .box.warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
+#importMsg .box.err, #preview .box.err { background: var(--err-bg); color: var(--err-fg); border-color: var(--hl); }
+#importMsg ul, #preview ul { margin: 6px 0 0; padding-left: 20px; }
 
 /* bottom sheet */
 .backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.55); display: none; }
@@ -254,20 +272,18 @@ h1, h2 { margin: 0; }
 .sheet .bd { overflow-y: auto; padding: 8px 16px; flex: 1 1 auto; -webkit-overflow-scrolling: touch; }
 .sheet .ft { padding: 10px 16px 14px; border-top: 1px solid var(--border); }
 .sheet .ft .btn { width: 100%; min-height: 52px; font-size: 18px; }
-.it { padding: 10px 0; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: start; }
+.it { padding: 10px 0; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 1fr; gap: 2px; }
 .it:last-child { border-bottom: 0; }
-.it .lv { grid-row: 1 / span 2; align-self: center; min-width: 56px; text-align: center; padding: 6px 8px; border-radius: 8px; background: var(--pin-bg); color: var(--pin-fg); font-weight: 700; font-size: 14px; }
 .it .n { font-weight: 700; overflow-wrap: anywhere; }
-.it .q { font-weight: 600; white-space: nowrap; font-size: 14px; }
-.it .c { grid-column: 2 / span 2; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
-.it .note { grid-column: 2 / span 2; font-size: 13px; color: var(--muted); }
+.it .c { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.it .note { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
 .empty { padding: 20px 0; color: var(--muted); text-align: center; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top"><h1>หาของในคลัง</h1></header>
-  <div id="status" class="status mock" role="status"></div>
+  <div id="status" class="status warn" role="status">กำลังโหลดข้อมูล ...</div>
 
   <div class="searchbar">
     <div class="row">
@@ -281,10 +297,9 @@ h1, h2 { margin: 0; }
 
   <section class="map-sec" id="mapSec">
     <h2>ผังคลัง</h2>
-    <div class="sub">แตะกรอบเพื่อดูสินค้าในกรอบนั้น · ตัวเลขมุมกรอบ = จำนวนรายการ</div>
+    <div class="sub">แตะกรอบเพื่อดูสินค้าในกรอบนั้น · ตัวเลขมุมกรอบ = จำนวนรายการ · ผังตามชีต "ผังคลัง" ในไฟล์ LAY_OUT_02.xlsx</div>
     <div class="legend">
-      <span><i style="background:#4472c4"></i>กรอบเก็บของ (แตะได้)</span>
-      <span><i style="background:#ffc000"></i>ป้าย/โซน (แตะไม่ได้)</span>
+      <span><i style="background:#4472c4"></i>กรอบ (แตะเพื่อดูสินค้า)</span>
       <span><i class="wall"></i>ผนัง</span>
     </div>
     <div class="zoombar">
@@ -298,12 +313,10 @@ h1, h2 { margin: 0; }
 
   <section class="manage">
     <h2>จัดการข้อมูล</h2>
-    <p>ลูกน้องกรอกใบจดใน LAY_OUT_02.xlsx แล้วนำไฟล์เข้าที่นี่ ข้อมูลจะถูกเก็บไว้ในเครื่องนี้</p>
-    <div class="btns">
-      <button id="btnImport" class="btn primary" type="button">นำเข้าไฟล์ใบจด (.xlsx)</button>
-      <button id="btnReset" class="btn" type="button">กลับไปใช้ข้อมูลสมมติ</button>
-    </div>
+    <p>ผังและตำแหน่งสินค้าอ่านจากไฟล์ LAY_OUT_02.xlsx (ชีต ผังคลัง / รวม / สินค้า) ลากไฟล์ใหม่มาวางเพื่อดูตัวอย่างก่อนบันทึก</p>
+    <button id="drop" class="drop" type="button">ลากไฟล์ .xlsx มาวางที่นี่ หรือแตะเพื่อเลือกไฟล์<small>ดูตัวอย่างได้ทันที ยังไม่มีอะไรเปลี่ยนจนกว่าจะกด "บันทึกขึ้นระบบ"</small></button>
     <input id="file" type="file" accept=".xlsx" hidden>
+    <div id="preview" role="status"></div>
     <div id="importMsg" role="status"></div>
   </section>
 </div>
@@ -314,20 +327,44 @@ h1, h2 { margin: 0; }
   <div id="sheetBody" class="bd"></div>
   <div class="ft"><button id="sheetClose" class="btn primary" type="button">ปิด</button></div>
 </div>
+<div id="pwSheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+  <div class="hd"><h2 id="pwTitle">ใส่รหัสผ่านสำหรับบันทึกไฟล์</h2><div class="meta">รหัสผ่านกลางที่ใช้ร่วมกัน (ไม่ถูกเก็บไว้ในเครื่อง)</div></div>
+  <div class="bd">
+    <input id="pwInput" class="pw" type="password" autocomplete="current-password" placeholder="รหัสผ่าน" aria-label="รหัสผ่าน">
+  </div>
+  <div class="ft" style="display:flex;gap:10px">
+    <button id="pwCancel" class="btn" type="button" style="flex:1">ยกเลิก</button>
+    <button id="pwOk" class="btn primary" type="button" style="flex:1">ยืนยันและบันทึก</button>
+  </div>
+</div>
 
 <script id="app-data" type="application/json">/*__DATA__*/</script>
 <script>
 (function () {
   'use strict';
 
-  // ===== ข้อมูลที่ฝังมาจาก build_finder.py =====
-  var DATA = JSON.parse(document.getElementById('app-data').textContent);
-  var FRAMES = DATA.frames;
-  var PRODUCTS = DATA.products;           // [รหัส, ชื่อ, หน่วย, จำนวนรวม]
-  var LS_KEY = 'layoutFinder.v1';
+  // ===== ตั้งค่าระบบออนไลน์ (Supabase Storage) =====
+  // ปล่อยว่าง = ปิดระบบออนไลน์ (เว็บยังใช้ได้: อ่าน ./LAY_OUT_02.xlsx บนเว็บเดียวกัน หรือข้อมูลสำรองที่ฝังมา)
+  // วิธีใส่ค่า ดูใน SETUP.md  (ใส่ anon/publishable key ได้ ห้ามใส่ service_role เด็ดขาด)
+  var SUPABASE_URL = '';          // เช่น https://abcdxyz.supabase.co
+  var SUPABASE_ANON_KEY = '';     // anon / publishable key
+  var UPLOAD_EMAIL = '';          // อีเมลของผู้ใช้กลางที่สร้างไว้ใน Supabase (ใช้คู่กับรหัสผ่านกลางตอนบันทึก)
+
+  // ===== ค่าคงที่ =====
+  var BUCKET = 'layout';
+  var VERSIONS_DIR = 'versions/';
+  var SITE_XLSX = './LAY_OUT_02.xlsx';
+  var LS_KEY = 'layoutFinder.v2';     // เก็บผลที่อ่านล่าสุด (คีย์เก่า layoutFinder.v1 ไม่ใช้แล้ว และไม่ลบ)
   var XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  var XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
   var UNKNOWN_NAME = '⚠ ไม่พบรหัสในรายการสินค้า';
   var MAX_SHOW = 50;
+  var DEBUG = /[?&]debug=1(&|$)/.test(location.search);
+  var SB_ON = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+  var CAN_UPLOAD = SB_ON && !!UPLOAD_EMAIL;
+
+  // ===== ข้อมูลสำรองที่ฝังมาจาก build_finder.py (อ่านจาก LAY_OUT_02.xlsx) =====
+  var EMBED = JSON.parse(document.getElementById('app-data').textContent);
 
   // ===== ตัวช่วยเล็กๆ =====
   function $(id) { return document.getElementById(id); }
@@ -346,11 +383,8 @@ h1, h2 { margin: 0; }
     return el;
   }
   function norm(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase(); }
-  function fmtQty(n) {
-    if (n == null || n === '' || isNaN(n)) return '–';
-    return Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
-  }
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtNum(n) { return Number(n).toLocaleString('en-US'); }
   // วันที่ พ.ศ. เช่น 18/11/2569 14:30
   function fmtThai(iso) {
     var d = new Date(iso);
@@ -358,35 +392,419 @@ h1, h2 { margin: 0; }
     return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + (d.getFullYear() + 543) +
       ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
   }
-  function levelText(lv) {
-    lv = String(lv == null ? '' : lv).trim();
-    if (!lv) return '';
-    return lv === 'พื้น' ? 'พื้น' : 'ระดับ ' + lv;
+  // ชื่อไฟล์เวอร์ชัน YYYYMMDD-HHMMSS (เวลา UTC) <-> ISO
+  function utcStamp(d) {
+    return d.getUTCFullYear() + pad2(d.getUTCMonth() + 1) + pad2(d.getUTCDate()) + '-' +
+      pad2(d.getUTCHours()) + pad2(d.getUTCMinutes()) + pad2(d.getUTCSeconds());
   }
-  function levelKey(lv) {
-    lv = String(lv == null ? '' : lv).trim();
-    if (lv === 'พื้น') return 0;
-    var n = parseFloat(lv);
-    return isNaN(n) ? 1e6 : n;
+  function stampToIso(name) {
+    var m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})\.xlsx$/.exec(name);
+    return m ? m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':' + m[6] + 'Z' : null;
   }
 
-  // ===== สถานะข้อมูล =====
-  var frameById = {};
-  FRAMES.forEach(function (f) { frameById[f.id] = f; });
+  // ===== บันทึกสำหรับ DEBUG (แสดงในแผงก็ต่อเมื่อเปิดด้วย ?debug=1) =====
+  var dbgLog = [];
+  var lastSb = null;                  // ผลเรียก Supabase ครั้งล่าสุด {op, status, text}
+  function dbg(msg) {
+    dbgLog.push(pad2(new Date().getHours()) + ':' + pad2(new Date().getMinutes()) + ':' + pad2(new Date().getSeconds()) + ' ' + msg);
+    if (DEBUG) renderDebug();
+  }
+
+  // ===========================================================================
+  // ส่วนที่ 1: ตัวอ่านไฟล์ LAY_OUT_02.xlsx
+  // (กติกาเดียวกับ tools/build_finder.py ทุกข้อ — แก้ที่หนึ่งต้องแก้ทั้งสองที่)
+  //   ผังคลัง : กรอบ = ช่อง merge ที่มีข้อความ, สี = สีพื้นเซลล์, ตกแต่ง = เส้นขอบหนา/บาง + ลูกศร + แถบสี
+  //   รวม     : B=Location (ชื่อกรอบ) C=รหัสสินค้า E=หมายเหตุ   สินค้า: A=รหัส B=ชื่อ C=หน่วย D=Total
+  // ===========================================================================
+  var SHEET_MAP = 'ผังคลัง', SHEET_ALL = 'รวม', SHEET_PROD = 'สินค้า';
+  var LEGEND_TITLE = 'คำอธิบาย';       // กล่องคำอธิบายทางขวาของผัง: ข้ามทุกอย่างตั้งแต่คอลัมน์นี้ไปทางขวา
+  var HEAD_ROWS = 3;                   // แถว 1-3 เป็นหัวเรื่อง ไม่นับเป็นพิกัดผัง
+  var UNIT_W_PX = 8, UNIT_H_PT = 6;    // 1 หน่วยกว้าง = 8px, 1 หน่วยสูง = 6pt
+  var DEF_COL_PX = 64, DEF_ROW_PT = 15, MDW = 7;
+  var LINE_STYLES = { thin: 1, thick: 2 };   // เส้นขอบที่นับเป็นเส้นตกแต่ง (medium = ขอบกรอบ ไม่นับ)
+  var KC = 20000;                      // เลขรวมแถว/คอลัมน์เป็นคีย์เดียว: แถว*KC + คอลัมน์
+  var THEME_ORDER = ['lt1', 'dk1', 'lt2', 'dk2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6'];
+  var friendly = function (msg) { return { friendly: msg }; };
+
+  function r3(v) { return Math.round(v * 1000) / 1000; }
+  function cellStr(cell) {
+    // อ่านค่าเซลล์เป็นข้อความ: ตัวเลข -> สตริงเต็ม (ไม่ใช่ 5.6e+11), ข้อความ -> trim
+    if (!cell || cell.t === 'z' || cell.t === 'e' || cell.v == null) return '';
+    if (typeof cell.v === 'number') return isFinite(cell.v) ? String(cell.v) : '';
+    return String(cell.v).trim();
+  }
+  function cellAt(ws, r, c) { return ws[XLSX.utils.encode_cell({ r: r - 1, c: c - 1 })]; }
+  function fileText(wb, path) {
+    var f = wb.files && wb.files[path];
+    return f && f.content ? new TextDecoder('utf-8').decode(f.content) : null;
+  }
+
+  // ---- สี: rgb / theme+tint ----
+  function rgbToHls(r, g, b) {
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mn + mx) / 2, s, hh;
+    if (mn === mx) return [0, l, 0];
+    s = l <= 0.5 ? (mx - mn) / (mx + mn) : (mx - mn) / (2 - mx - mn);
+    var rc = (mx - r) / (mx - mn), gc = (mx - g) / (mx - mn), bc = (mx - b) / (mx - mn);
+    hh = r === mx ? bc - gc : g === mx ? 2 + rc - bc : 4 + gc - rc;
+    hh = (hh / 6) % 1; if (hh < 0) hh += 1;
+    return [hh, l, s];
+  }
+  function hlsToRgb(hh, l, s) {
+    if (s === 0) return [l, l, l];
+    var m2 = l <= 0.5 ? l * (1 + s) : l + s - l * s, m1 = 2 * l - m2;
+    function v(hue) {
+      hue = hue % 1; if (hue < 0) hue += 1;
+      if (hue < 1 / 6) return m1 + (m2 - m1) * hue * 6;
+      if (hue < 0.5) return m2;
+      if (hue < 2 / 3) return m1 + (m2 - m1) * (2 / 3 - hue) * 6;
+      return m1;
+    }
+    return [v(hh + 1 / 3), v(hh), v(hh - 1 / 3)];
+  }
+  function applyTint(hex6, tint) {
+    var hls = rgbToHls(parseInt(hex6.slice(0, 2), 16) / 255, parseInt(hex6.slice(2, 4), 16) / 255, parseInt(hex6.slice(4, 6), 16) / 255);
+    var l = tint < 0 ? hls[1] * (1 + tint) : hls[1] * (1 - tint) + tint;
+    var rgb = hlsToRgb(hls[0], Math.max(0, Math.min(1, l)), hls[2]);
+    return rgb.map(function (x) { var n = Math.floor(x * 255 + 0.5); return (n < 16 ? '0' : '') + n.toString(16); }).join('').toUpperCase();
+  }
+  function readTheme(wb) {
+    var xml = fileText(wb, 'xl/theme/theme1.xml');
+    var out = {};
+    var m = xml && /<a:clrScheme[^>]*>([\s\S]*?)<\/a:clrScheme>/.exec(xml);
+    if (m) {
+      var re = /<a:(dk1|lt1|dk2|lt2|accent[1-6])>([\s\S]*?)<\/a:\1>/g, t;
+      while ((t = re.exec(m[1]))) {
+        var v = /(?:lastClr|val)="([0-9A-Fa-f]{6})"/.exec(t[2]);
+        if (v) out[t[1]] = v[1].toUpperCase();
+      }
+    }
+    return THEME_ORDER.map(function (n) { return out[n] || null; });
+  }
+  // el = แท็ก <color>/<fgColor> -> 'RRGGBB' หรือ null
+  function colorHex(el, theme, autoBlack) {
+    if (!el) return null;
+    var rgb = el.getAttribute('rgb');
+    if (rgb && /^([0-9A-Fa-f]{8}|[0-9A-Fa-f]{6})$/.test(rgb)) return rgb.slice(-6).toUpperCase();
+    var th = el.getAttribute('theme');
+    if (th !== null && /^\d+$/.test(th)) {
+      var base = theme[parseInt(th, 10)];
+      if (!base) return null;
+      var tint = parseFloat(el.getAttribute('tint') || '0');
+      return tint ? applyTint(base, tint) : base;
+    }
+    if (autoBlack && (el.getAttribute('auto') === '1' || el.getAttribute('auto') === 'true')) return '000000';
+    return null;
+  }
+  function childEls(root, tag) {
+    var el = root.getElementsByTagName(tag)[0];
+    return el ? Array.prototype.slice.call(el.children) : [];
+  }
+  function sideOf(b, side, theme) {
+    var el = null, i;
+    for (i = 0; i < b.children.length; i++) if (b.children[i].tagName === side) el = b.children[i];
+    if (!el || !el.getAttribute('style')) return null;
+    var col = el.getElementsByTagName('color')[0];
+    return [el.getAttribute('style'), (col ? colorHex(col, theme, true) : null) || '000000'];
+  }
+  // styles.xml -> {xfFill[], xfBorder[]}  (SheetJS ไม่ให้ข้อมูลเส้นขอบ จึงอ่านเอง)
+  function readStyles(wb, theme) {
+    var xml = fileText(wb, 'xl/styles.xml');
+    if (!xml) throw friendly('อ่านสไตล์ในไฟล์ไม่ได้ (ไม่พบ styles.xml)');
+    var root = new DOMParser().parseFromString(xml, 'application/xml').documentElement;
+    var fills = childEls(root, 'fills').map(function (f) {
+      var pf = f.getElementsByTagName('patternFill')[0];
+      var fg = pf && pf.getElementsByTagName('fgColor')[0];
+      return pf && pf.getAttribute('patternType') === 'solid' && fg ? colorHex(fg, theme) : null;
+    });
+    var borders = childEls(root, 'borders').map(function (b) {
+      var d = {};
+      ['top', 'bottom', 'left', 'right'].forEach(function (s) { var v = sideOf(b, s, theme); if (v) d[s] = v; });
+      return d;
+    });
+    var xfFill = [], xfBorder = [];
+    childEls(root, 'cellXfs').forEach(function (xf) {
+      var fi = parseInt(xf.getAttribute('fillId') || '0', 10), bi = parseInt(xf.getAttribute('borderId') || '0', 10);
+      xfFill.push(fi < fills.length ? fills[fi] : null);
+      xfBorder.push(bi < borders.length ? borders[bi] : {});
+    });
+    return { xfFill: xfFill, xfBorder: xfBorder };
+  }
+  // หาไฟล์ XML ของชีตตามชื่อ (workbook.xml + rels)
+  function sheetXmlPath(wb, name) {
+    var wbx = new DOMParser().parseFromString(fileText(wb, 'xl/workbook.xml') || '<x/>', 'application/xml');
+    var rid = null, shs = wbx.getElementsByTagName('sheet'), i;
+    for (i = 0; i < shs.length; i++) if (shs[i].getAttribute('name') === name) rid = shs[i].getAttribute('r:id');
+    var rels = new DOMParser().parseFromString(fileText(wb, 'xl/_rels/workbook.xml.rels') || '<x/>', 'application/xml').getElementsByTagName('Relationship');
+    for (i = 0; i < rels.length; i++) {
+      if (rid && rels[i].getAttribute('Id') === rid) {
+        var t = rels[i].getAttribute('Target');
+        return t.charAt(0) === '/' ? t.slice(1) : 'xl/' + t;
+      }
+    }
+    throw friendly('หาไฟล์ของชีต ' + name + ' ไม่เจอ');
+  }
+  // ชีต -> Map(คีย์แถว/คอลัมน์ -> {f: สีพื้น|null, b: ขอบ}) เฉพาะเซลล์ที่มีอยู่ใน XML
+  function readCellStyles(sx, st) {
+    var out = new Map(), re = /<c\s([^>]*?)\/?>/g, m;
+    while ((m = re.exec(sx))) {
+      var r = /(?:^|\s)r="([A-Z]+)(\d+)"/.exec(m[1]);
+      if (!r) continue;
+      var s = /(?:^|\s)s="(\d+)"/.exec(m[1]);
+      var i = s ? parseInt(s[1], 10) : 0, col = 0, k;
+      for (k = 0; k < r[1].length; k++) col = col * 26 + (r[1].charCodeAt(k) - 64);
+      out.set(parseInt(r[2], 10) * KC + col, { f: i < st.xfFill.length ? st.xfFill[i] : null, b: i < st.xfBorder.length ? st.xfBorder[i] : {} });
+    }
+    return out;
+  }
+  function widthToPx(w) { return Math.floor(((256 * w + Math.floor(128 / MDW)) / 256) * MDW); }
+
+  // ---- อ่านชีต ผังคลัง -> {frames, decor} ----
+  function parseMap(wb) {
+    var ws = wb.Sheets[SHEET_MAP];
+    var theme = readTheme(wb);
+    var sx = fileText(wb, sheetXmlPath(wb, SHEET_MAP));
+    var sty = readCellStyles(sx, readStyles(wb, theme));
+    var ref = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+    var maxR = ref.e.r + 1, maxC = ref.e.c + 1;
+    sty.forEach(function (v, k) { maxR = Math.max(maxR, Math.floor(k / KC)); maxC = Math.max(maxC, k % KC); });
+
+    // ขนาดแถว/คอลัมน์ -> พิกัดสะสม (หน่วยช่อง)
+    var fm = /<sheetFormatPr[^>]*>/.exec(sx) || [''];
+    var dc = /defaultColWidth="([\d.]+)"/.exec(fm[0]), dr = /defaultRowHeight="([\d.]+)"/.exec(fm[0]);
+    var dPx = dc ? widthToPx(parseFloat(dc[1])) : DEF_COL_PX, dPt = dr ? parseFloat(dr[1]) : DEF_ROW_PT;
+    var cols = ws['!cols'] || [], rows = ws['!rows'] || [];
+    var left = { 1: 0 }, top = {}, c, r;
+    top[HEAD_ROWS + 1] = 0;
+    for (c = 1; c <= maxC + 1; c++) {
+      var cd = cols[c - 1], px = cd && cd.wpx != null ? (cd.hidden ? 0 : cd.wpx) : dPx;
+      left[c + 1] = left[c] + px / UNIT_W_PX;
+    }
+    for (r = HEAD_ROWS + 1; r <= maxR + 1; r++) {
+      var rd = rows[r - 1], pt = rd && rd.hpt != null ? rd.hpt : dPt;
+      if (rd && rd.hidden) pt = 0;
+      top[r + 1] = top[r] + pt / UNIT_H_PT;
+    }
+    function fillOf(r, c) { var s = sty.get(r * KC + c); return s ? s.f : null; }
+    function textOf(r, c) { return cellStr(cellAt(ws, r, c)).replace(/\s+/g, ' ').trim(); }
+
+    // ช่วง merge [r1,c1,r2,c2] + ช่องเดี่ยวที่มีข้อความ (กรอบ 1 ช่อง ไม่ merge)
+    var ranges = [], mergeId = new Map();
+    (ws['!merges'] || []).forEach(function (m) {
+      for (var rr = m.s.r + 1; rr <= m.e.r + 1; rr++) for (var cc = m.s.c + 1; cc <= m.e.c + 1; cc++) mergeId.set(rr * KC + cc, ranges.length);
+      ranges.push([m.s.r + 1, m.s.c + 1, m.e.r + 1, m.e.c + 1]);
+    });
+    Object.keys(ws).forEach(function (k) {
+      if (k.charAt(0) === '!') return;
+      var a = XLSX.utils.decode_cell(k), rr = a.r + 1, cc = a.c + 1;
+      if (!mergeId.has(rr * KC + cc) && rr > HEAD_ROWS && textOf(rr, cc)) ranges.push([rr, cc, rr, cc]);
+    });
+    ranges.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+
+    var legendCol = null, i;
+    for (i = 0; i < ranges.length; i++) if (textOf(ranges[i][0], ranges[i][1]) === LEGEND_TITLE) { legendCol = ranges[i][1]; break; }
+
+    var frames = [], heads = [], blocks = [], covered = new Set();
+    ranges.forEach(function (g) {
+      var r1 = g[0], c1 = g[1], r2 = g[2], c2 = g[3], rr, cc;
+      for (rr = r1; rr <= r2; rr++) for (cc = c1; cc <= c2; cc++) covered.add(rr * KC + cc);
+      if (r2 <= HEAD_ROWS) return;                          // แถวหัวเรื่อง
+      if (legendCol !== null && c1 >= legendCol) return;    // กล่องคำอธิบาย
+      var txt = textOf(r1, c1), fill = fillOf(r1, c1);
+      if (txt === '▲' || txt === '▼') {
+        heads.push([r1, c1, r2, c2, txt]);
+      } else if (txt) {
+        // ขยายลงล่างถ้าสีพื้นยังต่อเนื่อง (ดูเฉพาะคอลัมน์ซ้าย-ขวาสุดของกรอบ และต้องไม่ใช่ช่อง merge อื่น)
+        var rext = r2;
+        while (fill && [c1, c2].every(function (x) { return !mergeId.has((rext + 1) * KC + x) && fillOf(rext + 1, x) === fill; })) rext++;
+        for (rr = r2 + 1; rr <= rext; rr++) for (cc = c1; cc <= c2; cc++) covered.add(rr * KC + cc);
+        frames.push({
+          id: 'f' + (frames.length + 1), name: txt, store: true,
+          x: r3(left[c1] + 1), y: r3(top[Math.max(r1, HEAD_ROWS + 1)] + 1),
+          w: r3(left[c2 + 1] - left[c1]), h: r3(top[rext + 1] - top[r1]), lh: r3(top[r2 + 1] - top[r1]),
+          color: fill || 'FFFFFF'
+        });
+      } else if (fill && fill !== 'FFFFFF') {
+        blocks.push([r1, c1, r2, c2, fill]);                // ช่อง merge สีพื้นไม่มีข้อความ (เช่น ก้านลูกศร)
+      }
+    });
+
+    var decor = [];
+    function rectDecor(typ, r1, c1, r2, c2, color) {
+      r1 = Math.max(r1, HEAD_ROWS + 1);
+      return { type: typ, x: r3(left[c1] + 1), y: r3(top[r1] + 1), w: r3(left[c2 + 1] - left[c1]), h: r3(top[r2 + 1] - top[r1]), color: color };
+    }
+
+    // ---- แถบสี: เซลล์สีพื้นที่ไม่ merge และไม่อยู่ในกรอบ (รวมเป็นสี่เหลี่ยมใหญ่สุด)
+    var fills = new Map();
+    sty.forEach(function (v, k) {
+      var rr = Math.floor(k / KC), cc = k % KC;
+      if (rr <= HEAD_ROWS || covered.has(k) || (legendCol !== null && cc >= legendCol)) return;
+      if (v.f && v.f !== 'FFFFFF') fills.set(k, v.f);
+    });
+    var fillRows = [];
+    fills.forEach(function (v, k) { var rr = Math.floor(k / KC); if (fillRows.indexOf(rr) < 0) fillRows.push(rr); });
+    fillRows.sort(function (a, b) { return a - b; });
+    var bars = [], active = {};
+    fillRows.forEach(function (rr) {
+      var cs = [];
+      fills.forEach(function (v, k) { if (Math.floor(k / KC) === rr) cs.push(k % KC); });
+      cs.sort(function (a, b) { return a - b; });
+      var runs = [], a = 0, b;
+      while (a < cs.length) {
+        b = a;
+        while (b + 1 < cs.length && cs[b + 1] === cs[b] + 1 && fills.get(rr * KC + cs[b + 1]) === fills.get(rr * KC + cs[a])) b++;
+        runs.push([cs[a], cs[b], fills.get(rr * KC + cs[a])]);
+        a = b + 1;
+      }
+      var nxt = {};
+      runs.forEach(function (run) {
+        var key = run.join(',');
+        if (active[key] && active[key][1] === rr - 1) { active[key][1] = rr; nxt[key] = active[key]; }
+        else { nxt[key] = [rr, rr]; bars.push([run, nxt[key]]); }
+      });
+      active = nxt;
+    });
+    bars.forEach(function (x) { decor.push(rectDecor('แถบ', x[1][0], x[0][0], x[1][1], x[0][1], x[0][2])); });
+
+    // ---- ลูกศร: ▲/▼ (ช่อง merge) + ก้านสีพื้น (ช่อง merge 1 คอลัมน์ ต่อติดหัว)
+    var used = {};
+    heads.forEach(function (g) {
+      var r1 = g[0], c1 = g[1], r2 = g[2], c2 = g[3], up = g[4] === '▲';
+      var mid = c1 + Math.floor((c2 - c1 + 1) / 2), stem = null;
+      blocks.forEach(function (bl, k) {
+        if (stem || used[k] || bl[1] !== mid || bl[3] !== mid) return;
+        if ((up && bl[0] === r2 + 1) || (!up && bl[2] === r1 - 1)) stem = [k, bl[0], bl[2], bl[4]];
+      });
+      var ya = r1, yb = r2, col = 'FF0000';
+      if (stem) { used[stem[0]] = true; ya = up ? r1 : stem[1]; yb = up ? stem[2] : r2; col = stem[3]; }
+      var d = rectDecor(up ? 'ลูกศรขึ้น' : 'ลูกศรลง', ya, c1, yb, c2, col);
+      d.hd = r3(top[r2 + 1] - top[r1]);                     // ความสูงหัวลูกศร
+      d.sx = stem ? r3(left[mid]) : 0;                      // ก้าน: ซ้ายสุด (หน่วย 0-based) และความกว้าง
+      d.sw = stem ? r3(left[mid + 1] - left[mid]) : 0;
+      decor.push(d);
+    });
+    blocks.forEach(function (bl, k) { if (!used[k]) decor.push(rectDecor('แถบ', bl[0], bl[1], bl[2], bl[3], bl[4])); });
+
+    // ---- เส้นตกแต่ง: ขอบเซลล์ชนิด thin/thick -> รวมเป็นเส้นยาว
+    // ข้ามขอบที่อยู่ "ข้างใน" ช่อง merge เดียวกัน (Excel ไม่แสดงเส้นนั้น)
+    var hedge = new Map(), vedge = new Map();   // hedge[แถว,คอลัมน์] = ขอบบนของแถว | vedge[แถว,คอลัมน์] = ขอบซ้ายของคอลัมน์
+    function put(map, key, side) {
+      if (!side || !LINE_STYLES[side[0]]) return;
+      var old = map.get(key);
+      if (!old || LINE_STYLES[side[0]] > LINE_STYLES[old[0]]) map.set(key, side);
+    }
+    function sameMerge(ka, kb) { return mergeId.has(ka) && mergeId.get(ka) === mergeId.get(kb); }
+    sty.forEach(function (v, k) {
+      var b = v.b, rr = Math.floor(k / KC), cc = k % KC;
+      if (!b.top && !b.bottom && !b.left && !b.right) return;
+      if (!sameMerge(k, k - KC)) put(hedge, k, b.top);
+      if (!sameMerge(k, k + KC)) put(hedge, k + KC, b.bottom);
+      if (!sameMerge(k, k - 1)) put(vedge, k, b.left);
+      if (!sameMerge(k, k + 1)) put(vedge, k + 1, b.right);
+    });
+    var hk = [], vk = [];
+    hedge.forEach(function (v, k) { if (Math.floor(k / KC) >= HEAD_ROWS + 1) hk.push(k); });
+    vedge.forEach(function (v, k) { if (Math.floor(k / KC) > HEAD_ROWS) vk.push([k % KC, Math.floor(k / KC)]); });
+    hk.sort(function (a, b) { return a - b; });
+    vk.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+    var lines = [];
+    hk.forEach(function (k) {
+      var rr = Math.floor(k / KC), cc = k % KC, v = hedge.get(k), key = rr + '|' + v.join(','), last = lines[lines.length - 1];
+      if (last && last.h && last.key === key && last.end === cc - 1) last.end = cc;
+      else lines.push({ h: true, pos: rr, v: v, key: key, start: cc, end: cc });
+    });
+    vk.forEach(function (p) {
+      var cc = p[0], rr = p[1], v = vedge.get(rr * KC + cc), key = cc + '|' + v.join(','), last = lines[lines.length - 1];
+      if (last && !last.h && last.key === key && last.end === rr - 1) last.end = rr;
+      else lines.push({ h: false, pos: cc, v: v, key: key, start: rr, end: rr });
+    });
+    lines.forEach(function (ln) {
+      var x1, x2, y1, y2;
+      if (ln.h) { x1 = left[ln.start]; x2 = left[ln.end + 1]; y1 = y2 = top[ln.pos]; }
+      else { x1 = x2 = left[ln.pos]; y1 = top[ln.start]; y2 = top[ln.end + 1]; }
+      decor.push({ type: 'เส้น', x1: r3(x1), y1: r3(y1), x2: r3(x2), y2: r3(y2), color: ln.v[1], thick: ln.v[0] === 'thick',
+        x: r3(x1 + 1), y: r3(y1 + 1), w: r3(x2 - x1), h: r3(y2 - y1) });
+    });
+    return { frames: frames, decor: decor };
+  }
+
+  // ---- อ่านชีต สินค้า และ รวม ----
+  function parseProducts(wb) {
+    var ws = wb.Sheets[SHEET_PROD], ref = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1'), out = [], r;
+    for (r = 2; r <= ref.e.r + 1; r++) {
+      var code = cellStr(cellAt(ws, r, 1));
+      if (!code || code === 'Grand Total') continue;
+      var t = cellAt(ws, r, 4), total = t && t.t === 'n' && isFinite(t.v) ? t.v : 0;
+      out.push([code, cellStr(cellAt(ws, r, 2)), cellStr(cellAt(ws, r, 3)), total]);
+    }
+    return out;
+  }
+  function parseLocations(wb) {
+    var ws = wb.Sheets[SHEET_ALL], ref = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+    var head = 4, r;
+    for (r = 1; r <= 10; r++) if (norm(cellStr(cellAt(ws, r, 2))) === 'location') { head = r; break; }
+    var locations = [], skipped = [];
+    for (r = head + 1; r <= ref.e.r + 1; r++) {
+      var loc = cellStr(cellAt(ws, r, 2)).replace(/\s+/g, ' ').trim(), code = cellStr(cellAt(ws, r, 3));
+      if (!loc && !code) continue;                          // แถวว่าง / โน้ตท้ายตาราง
+      if (!code) { skipped.push({ row: r, why: 'มี Location แต่ไม่มีรหัสสินค้า' }); continue; }
+      if (!loc) { skipped.push({ row: r, why: 'มีรหัสสินค้าแต่ไม่มี Location' }); continue; }
+      locations.push({ frame: norm(loc), loc: loc, code: code, note: cellStr(cellAt(ws, r, 5)), row: r });
+    }
+    return { locations: locations, skipped: skipped };
+  }
+
+  // ---- ไฟล์ (ArrayBuffer) -> ข้อมูลพร้อมใช้ ; ผิดปกติ = throw { friendly: 'ข้อความไทย' } ----
+  function parseBuffer(buf) {
+    var wb;
+    try {
+      wb = XLSX.read(buf, { type: 'array', cellStyles: true, bookFiles: true, sheets: [SHEET_MAP, SHEET_ALL, SHEET_PROD] });
+    } catch (e) {
+      throw friendly('อ่านไฟล์ไม่สำเร็จ ตรวจว่าเป็นไฟล์ .xlsx ที่ถูกต้อง');
+    }
+    var names = (wb && wb.SheetNames) || [];
+    var miss = [SHEET_MAP, SHEET_ALL, SHEET_PROD].filter(function (n) { return names.indexOf(n) < 0 || !wb.Sheets[n]; });
+    if (miss.length) throw friendly('ไฟล์นี้ไม่ใช่ไฟล์ผังคลัง LAY_OUT_02 ขาดชีต: ' + miss.join(', ') + ' (ต้องมีทั้ง ผังคลัง, รวม, สินค้า)');
+    var map = parseMap(wb);
+    if (!map.frames.length) throw friendly('อ่านชีต ผังคลัง ไม่เจอกรอบเลย (กรอบต้องเป็นช่อง merge ที่มีชื่อกรอบอยู่ข้างใน)');
+    var lc = parseLocations(wb);
+    var md = wb.Props && wb.Props.ModifiedDate;
+    return { fileDate: md ? new Date(md).toISOString() : null, frames: map.frames, decor: map.decor,
+      products: parseProducts(wb), locations: lc.locations, skipped: lc.skipped };
+  }
+
+  // วิเคราะห์ผลอ่าน: Location ที่ไม่ตรงชื่อกรอบบนผัง (รวมตามชื่อ พร้อมเลขแถว)
+  function analyze(d) {
+    var keys = {}, byName = {}, order = [];
+    d.frames.forEach(function (f) { keys[norm(f.name)] = true; });
+    d.locations.forEach(function (l) {
+      if (keys[l.frame]) return;
+      if (!byName[l.frame]) { byName[l.frame] = { loc: l.loc, rows: [] }; order.push(l.frame); }
+      byName[l.frame].rows.push(l.row);
+    });
+    var decor = {};
+    d.decor.forEach(function (x) { decor[x.type] = (decor[x.type] || 0) + 1; });
+    return { unmatched: order.map(function (k) { return byName[k]; }), decorByType: decor };
+  }
+
+  // ===========================================================================
+  // ส่วนที่ 2: สถานะข้อมูลที่แสดงอยู่
+  // ===========================================================================
+  var FRAMES = [], DECOR = [], PRODUCTS = [], LOCS = [];
+  var framesByKey = {};          // คีย์ชื่อกรอบ -> [กรอบ] (ชื่อซ้ำกันได้ เช่น โซนรหัส 7 สองกรอบ)
   var prodByCode = new Map();
-  PRODUCTS.forEach(function (p) {
-    prodByCode.set(String(p[0]).toUpperCase(), { code: p[0], name: p[1], unit: p[2], total: p[3] });
-  });
-
-  var state = { mode: 'mock', importedAt: null, locations: DATA.mockLocations.slice() };
   var locByCode = new Map();     // รหัส(ตัวใหญ่) -> [location]
-  var locByFrame = new Map();    // id กรอบ -> [location]
+  var locByFrame = new Map();    // คีย์ชื่อกรอบ -> [location]
   var items = [];                // รายการที่ค้นหาได้
+  var cur = null;                // ชุดข้อมูลที่แสดงอยู่ {src, label, when, whenLabel, sig, notes, data}
+  var base = null;               // ชุดข้อมูลปกติล่าสุด (ไม่ใช่ตัวอย่าง) ไว้กลับมาตอนยกเลิกตัวอย่าง
+  var pending = null;            // ไฟล์ที่ดูตัวอย่างอยู่ {buf, name}
+  var loading = true;
 
   function rebuild() {
     locByCode = new Map();
     locByFrame = new Map();
-    state.locations.forEach(function (l) {
+    LOCS.forEach(function (l) {
       var key = String(l.code).toUpperCase();
       if (!locByCode.has(key)) locByCode.set(key, []);
       locByCode.get(key).push(l);
@@ -395,9 +813,9 @@ h1, h2 { margin: 0; }
     });
     items = [];
     prodByCode.forEach(function (p) { items.push(p); });
-    // รหัสที่อยู่ในใบจดแต่ไม่มีในรายการสินค้า ก็ให้ค้นเจอ
+    // รหัสที่อยู่ในชีต รวม แต่ไม่มีในรายการสินค้า ก็ให้ค้นเจอ
     var seen = new Set();
-    state.locations.forEach(function (l) {
+    LOCS.forEach(function (l) {
       var key = String(l.code).toUpperCase();
       if (!prodByCode.has(key) && !seen.has(key)) {
         seen.add(key);
@@ -407,59 +825,47 @@ h1, h2 { margin: 0; }
     items.forEach(function (it) { it.hay = norm(it.code + ' ' + it.name); it.codeU = String(it.code).toUpperCase(); });
   }
 
-  // ===== localStorage (ห่อ try/catch ทุกครั้ง) =====
-  function lsGet() { try { return localStorage.getItem(LS_KEY); } catch (e) { return null; } }
-  function lsSet(v) { try { localStorage.setItem(LS_KEY, v); return true; } catch (e) { return false; } }
-  function lsDel() { try { localStorage.removeItem(LS_KEY); return true; } catch (e) { return false; } }
-
-  function loadSaved() {
-    var raw = lsGet();
-    if (!raw) return;
-    try {
-      var o = JSON.parse(raw);
-      if (!o || o.version !== 1 || !Array.isArray(o.locations)) {
-        console.warn('layoutFinder: ข้อมูลที่เก็บไว้เวอร์ชันไม่ตรง ใช้ข้อมูลสมมติแทน');
-        return;
-      }
-      var locs = o.locations.filter(function (l) {
-        return l && typeof l.frame === 'string' && frameById[l.frame] && l.code != null && String(l.code) !== '';
-      });
-      state = { mode: 'real', importedAt: o.importedAt, locations: locs };
-    } catch (e) {
-      console.warn('layoutFinder: อ่านข้อมูลที่เก็บไว้ไม่ได้ ใช้ข้อมูลสมมติแทน', e);
-    }
-  }
-
   // ===== แถบสถานะ =====
+  var SRC_TEXT = {
+    supabase: 'ข้อมูลล่าสุดจากระบบออนไลน์',
+    site: 'ข้อมูลจากไฟล์ LAY_OUT_02.xlsx บนเว็บ',
+    cache: 'ข้อมูลที่จำไว้ในเครื่อง (ใช้ตอนออฟไลน์)',
+    embedded: 'ข้อมูลสำรองที่ฝังมากับหน้าเว็บ',
+    preview: 'ตัวอย่างจากไฟล์ที่เลือก (ยังไม่ได้บันทึก)'
+  };
   function renderStatus() {
     var el = $('status');
-    if (state.mode === 'mock') {
-      el.className = 'status mock';
-      el.textContent = '⚠ ข้อมูลสมมติ (ยังไม่ได้นำเข้าใบจดจริง)';
-    } else {
-      el.className = 'status real';
-      el.textContent = 'ข้อมูลจากใบจด นำเข้าเมื่อ ' + fmtThai(state.importedAt);
-    }
-    $('btnReset').disabled = state.mode === 'mock';
+    el.textContent = '';
+    if (!cur) { el.className = 'status warn'; el.textContent = 'กำลังโหลดข้อมูล ...'; return; }
+    var good = cur.src === 'supabase' || cur.src === 'site';
+    el.className = 'status ' + (good && !loading ? 'ok' : 'warn');
+    var t = SRC_TEXT[cur.src] + (cur.label ? ' ' + cur.label : '') +
+      (cur.when ? ' · ' + cur.whenLabel + ' ' + fmtThai(cur.when) : '') + ' · ' + fmtNum(LOCS.length) + ' รายการ';
+    el.appendChild(h('div', null, [t]));
+    var notes = (cur.notes || []).slice();
+    if (loading) notes.push('กำลังตรวจหาข้อมูลล่าสุด ...');
+    if (!LOCS.length) notes.push('ยังไม่มีตำแหน่งสินค้า (ชีต "รวม" ในไฟล์ยังว่าง) ผังแสดงได้ แต่ค้นหาตำแหน่งยังไม่ได้');
+    notes.forEach(function (n) { el.appendChild(h('div', { class: 'l2' }, [n])); });
   }
 
   // ===== ผังคลัง =====
-  // วางกรอบตามพิกัดช่องกริดใน layout_config.csv (X,Y = มุมซ้ายบนนับจาก 1, กว้าง/สูง = จำนวนช่อง)
-  // 1 ช่อง = U px (ปรับได้ด้วยปุ่ม + − พอดีจอ) ส่วนตกแต่ง (ผนัง/วงเล็บ/ลูกศร/แถบ) วาดเป็น SVG ทับกรอบ
-  var DECOR = DATA.decor || [];
+  // วางกรอบตามพิกัดหน่วยช่อง (x,y = มุมซ้ายบนนับจาก 1, กว้าง/สูง = หน่วยช่อง) 1 หน่วย = U px (ปุ่ม + − พอดีจอ)
+  // ส่วนตกแต่ง (เส้นผนัง/วงเล็บ/ลูกศร/แถบ) วาดเป็น SVG ทับกรอบ
   var SVGNS = 'http://www.w3.org/2000/svg';
   var MAP_BLUE = '4472C4', RED = 'FF0000';
   var U_MIN = 4, U_MAX = 20;
   var U = 8;
   var frameEls = {};
-  var BOUNDS = (function () {
+  var BOUNDS = { x0: 0, y0: 0, w: 1, h: 1 };
+  function calcBounds() {
     var all = FRAMES.concat(DECOR);
+    if (!all.length) return { x0: 0, y0: 0, w: 1, h: 1 };
     var x0 = Math.min.apply(null, all.map(function (f) { return f.x - 1; })) - 1;
     var y0 = Math.min.apply(null, all.map(function (f) { return f.y - 1; })) - 1;
     var x1 = Math.max.apply(null, all.map(function (f) { return f.x + f.w - 1; })) + 1;
     var y1 = Math.max.apply(null, all.map(function (f) { return f.y + f.h - 1; })) + 1;
     return { x0: x0, y0: y0, w: x1 - x0, h: y1 - y0 };
-  })();
+  }
 
   // ความสว่างสัมพัทธ์ (WCAG) และสีขอบเข้ม — สูตรเดียวกับ build_layout.py เพื่อให้สีตรงกับผัง Excel
   function relLum(hex) {
@@ -486,36 +892,14 @@ h1, h2 { margin: 0; }
     }
     DECOR.forEach(function (d) {
       var L = d.x - 1, T = d.y - 1, W = d.w, H = d.h, col = '#' + (d.color || RED);
-      if (d.type === 'ผนัง') {
-        if (W === 1) line(L, T, L, T + H, col, 3);        // เส้นตั้ง ตามขอบซ้ายของคอลัมน์ X
-        else line(L, T, L + W, T, col, 3);                // เส้นนอน ตามขอบบนของแถว Y
-      } else if (d.type === 'วงเล็บ') {
-        var half, tipLeft, tipUp, sp;
-        if (H >= W) {                                     // ปีกกาตั้ง: เส้นกลาง + ขีดหัว/ท้าย + ปลายแหลมกลาง
-          half = Math.floor(W / 2); tipLeft = d.name.indexOf('ซ้าย') >= 0;
-          sp = L + half;
-          line(sp, T, sp, T + H, col, 1.4);
-          line(tipLeft ? sp : L, T, tipLeft ? L + W : sp, T, col, 1.4);
-          line(tipLeft ? sp : L, T + H, tipLeft ? L + W : sp, T + H, col, 1.4);
-          var my = T + Math.floor(H / 2);
-          line(tipLeft ? L : sp, my, tipLeft ? sp : L + W, my, col, 1.4);
-        } else {                                          // ปีกกานอน
-          half = Math.floor(H / 2); tipUp = d.name.indexOf('ขึ้น') >= 0;
-          sp = tipUp ? T + half : T + H - half;
-          line(L, sp, L + W, sp, col, 1.4);
-          var a1 = tipUp ? sp : T, a2 = tipUp ? T + H : sp;      // ขีดข้างฝั่งตรงข้ามปลายแหลม
-          line(L, a1, L, a2, col, 1.4);
-          line(L + W, a1, L + W, a2, col, 1.4);
-          var m = L + Math.floor(W / 2);
-          line(m, tipUp ? T : sp, m, tipUp ? sp : T + H, col, 1.4);
-        }
+      if (d.type === 'เส้น') {                            // เส้นจากขอบเซลล์: หนา = ผนัง / บาง = วงเล็บ
+        line(d.x1, d.y1, d.x2, d.y2, col, d.thick ? 3 : 1.4);
       } else if (d.type === 'ลูกศรขึ้น' || d.type === 'ลูกศรลง') {
-        var up = d.type === 'ลูกศรขึ้น', hd = 3, mid = L + Math.floor(W / 2);
-        var cx = L + W / 2;
+        var up = d.type === 'ลูกศรขึ้น', hd = d.hd || 3, cx = L + W / 2;
         svg.appendChild(svgEl('polygon', { fill: col, points: up
           ? cx + ',' + T + ' ' + (L + W) + ',' + (T + hd) + ' ' + L + ',' + (T + hd)
           : L + ',' + (T + H - hd) + ' ' + (L + W) + ',' + (T + H - hd) + ' ' + cx + ',' + (T + H) }));
-        svg.appendChild(svgEl('rect', { fill: col, x: mid, width: 1, y: up ? T + hd : T, height: H - hd }));
+        if (d.sw > 0) svg.appendChild(svgEl('rect', { fill: col, x: d.sx, width: d.sw, y: up ? T + hd : T, height: H - hd }));
       } else if (d.type === 'แถบ') {
         svg.appendChild(svgEl('rect', { x: L, y: T, width: W, height: H, fill: col,
           stroke: shade(d.color || 'FFC000', 0.5), 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke' }));
@@ -537,7 +921,7 @@ h1, h2 { margin: 0; }
       el.style.color = relLum(fc) >= 0.3 ? '#000000' : '#ffffff';
       if (fc !== 'FFFFFF') el.style.border = '2px solid ' + shade(fc, 0.55);
       el.appendChild(h('div', { class: 'lbl' }, [h('span', null, [f.name])]));
-      if (f.store) el.addEventListener('click', function () { openSheet(f.id); });
+      if (f.store) el.addEventListener('click', function () { openSheet(f.key); });
       map.appendChild(el);
       frameEls[f.id] = el;
     });
@@ -594,28 +978,29 @@ h1, h2 { margin: 0; }
 
   function updateCounts() {
     FRAMES.forEach(function (f) {
-      if (!f.store) return;
       var el = frameEls[f.id];
       var old = el.querySelector('.cnt');
       if (old) old.remove();
-      var n = (locByFrame.get(f.id) || []).length;
+      var n = (locByFrame.get(f.key) || []).length;
       if (n > 0) el.appendChild(h('span', { class: 'cnt' }, [String(n)]));
     });
   }
 
-  // ===== ไฮไลต์กรอบ =====
+  // ===== ไฮไลต์กรอบ (รับคีย์ชื่อกรอบ ไฮไลต์ทุกกรอบที่ชื่อนั้น) =====
   function clearHighlight() {
     $('map').classList.remove('has-hl');
     Object.keys(frameEls).forEach(function (k) { frameEls[k].classList.remove('hl'); });
   }
-  function highlight(ids) {
+  function highlight(keys) {
     clearHighlight();
     var first = null;
-    ids.forEach(function (id) {
-      var el = frameEls[id];
-      if (!el) return;
-      el.classList.add('hl');
-      if (!first) first = el;
+    keys.forEach(function (key) {
+      (framesByKey[key] || []).forEach(function (f) {
+        var el = frameEls[f.id];
+        if (!el) return;
+        el.classList.add('hl');
+        if (!first) first = el;
+      });
     });
     if (!first) return;
     $('map').classList.add('has-hl');
@@ -644,8 +1029,6 @@ h1, h2 { margin: 0; }
     return found.map(function (x) { return x.it; });
   }
 
-  function frameLabel(f) { return f ? f.name : '?'; }
-
   function renderResults() {
     var box = $('results');
     box.textContent = '';
@@ -663,26 +1046,26 @@ h1, h2 { margin: 0; }
       'พบทั้งหมด ' + list.length + ' รายการ' + (list.length > MAX_SHOW ? ' (แสดง ' + MAX_SHOW + ' รายการแรก พิมพ์เพิ่มเพื่อกรอง)' : '')
     ]));
     shown.forEach(function (it) {
-      var locs = (locByCode.get(it.codeU) || []).filter(function (l) { return frameById[l.frame]; });
-      var card = h('div', { class: 'res' + (locs.length ? ' clickable' : ''), 'data-code': it.code }, [
+      var locs = locByCode.get(it.codeU) || [];
+      var onMap = locs.filter(function (l) { return framesByKey[l.frame]; });
+      var card = h('div', { class: 'res' + (onMap.length ? ' clickable' : ''), 'data-code': it.code }, [
         h('div', { class: 'nm' }, [it.name]),
-        h('div', { class: 'cd' }, ['รหัส ' + it.code])
+        h('div', { class: 'cd' }, ['รหัส ' + it.code + (it.unit ? ' · หน่วย ' + it.unit : '')])
       ]);
       if (locs.length) {
         var wrap = h('div', { class: 'locs' });
         locs.forEach(function (l) {
-          var f = frameById[l.frame];
-          var lv = levelText(l.level);
-          var btn = h('button', { class: 'loc', type: 'button', 'data-frame': l.frame }, [
-            h('span', { class: 'pin' }, ['📍 ' + frameLabel(f) + (lv ? ' · ' + lv : '')]),
-            h('span', { class: 'qty' }, [fmtQty(l.qty) + (it.unit ? ' ' + it.unit : '')])
+          var found = !!framesByKey[l.frame];
+          var btn = h('button', { class: 'loc' + (found ? '' : ' nomap'), type: 'button', 'data-frame': l.frame }, [
+            h('span', { class: 'pin' }, ['📍 ' + l.loc + (found ? '' : ' (ไม่พบบนผัง)')]),
+            l.note ? h('span', { class: 'qty' }, [l.note]) : null
           ]);
-          btn.addEventListener('click', function (ev) { ev.stopPropagation(); highlight([l.frame]); });
+          btn.addEventListener('click', function (ev) { ev.stopPropagation(); if (found) highlight([l.frame]); });
           wrap.appendChild(btn);
         });
         card.appendChild(wrap);
-        card.addEventListener('click', function () {
-          highlight(locs.map(function (l) { return l.frame; }));
+        if (onMap.length) card.addEventListener('click', function () {
+          highlight(onMap.map(function (l) { return l.frame; }));
         });
       } else {
         card.appendChild(h('span', { class: 'noloc' }, ['ยังไม่ระบุตำแหน่ง']));
@@ -693,44 +1076,88 @@ h1, h2 { margin: 0; }
 
   // ===== bottom sheet รายการในกรอบ =====
   var lastFocus = null;
-  function openSheet(id) {
-    var f = frameById[id];
-    if (!f) return;
-    var locs = (locByFrame.get(id) || []).slice().sort(function (a, b) {
-      var d = levelKey(a.level) - levelKey(b.level);
-      return d || String(a.code).localeCompare(String(b.code));
+  var openSheetEl = null;
+  function openPanel(id, focusId) {
+    lastFocus = document.activeElement;
+    openSheetEl = $(id);
+    $('backdrop').classList.add('open');
+    openSheetEl.classList.add('open');
+    document.body.classList.add('lock');
+    $(focusId).focus();
+  }
+  function closeSheet() {
+    $('backdrop').classList.remove('open');
+    $('sheet').classList.remove('open');
+    $('pwSheet').classList.remove('open');
+    document.body.classList.remove('lock');
+    if (lastFocus && lastFocus.focus) { try { lastFocus.focus({ preventScroll: true }); } catch (e) {} }
+    if (pwDone) { var f = pwDone; pwDone = null; f(null); }     // ปิดช่องรหัสผ่าน = ยกเลิก
+  }
+  function openSheet(key) {
+    var fl = framesByKey[key];
+    if (!fl) return;
+    var locs = (locByFrame.get(key) || []).slice().sort(function (a, b) {
+      return String(a.code).localeCompare(String(b.code));
     });
-    $('sheetTitle').textContent = f.name;
+    $('sheetTitle').textContent = fl[0].name;
     $('sheetMeta').textContent = locs.length ? locs.length + ' รายการ' : 'ยังไม่มีรายการ';
     var body = $('sheetBody');
     body.textContent = '';
     if (!locs.length) body.appendChild(h('div', { class: 'empty' }, ['ยังไม่มีสินค้าในกรอบนี้']));
     locs.forEach(function (l) {
       var p = prodByCode.get(String(l.code).toUpperCase());
-      var unit = p ? p.unit : '';
       body.appendChild(h('div', { class: 'it' }, [
-        h('div', { class: 'lv' }, [levelText(l.level) || '–']),
         h('div', { class: 'n' }, [p ? p.name : UNKNOWN_NAME]),
-        h('div', { class: 'q' }, [fmtQty(l.qty) + (unit ? ' ' + unit : '')]),
-        h('div', { class: 'c' }, ['รหัส ' + l.code]),
+        h('div', { class: 'c' }, ['รหัส ' + l.code + (p && p.unit ? ' · หน่วย ' + p.unit : '')]),
         l.note ? h('div', { class: 'note' }, ['หมายเหตุ: ' + l.note]) : null
       ]));
     });
     body.scrollTop = 0;
-    lastFocus = document.activeElement;
-    $('backdrop').classList.add('open');
-    $('sheet').classList.add('open');
-    document.body.classList.add('lock');
-    $('sheetClose').focus();
-  }
-  function closeSheet() {
-    $('backdrop').classList.remove('open');
-    $('sheet').classList.remove('open');
-    document.body.classList.remove('lock');
-    if (lastFocus && lastFocus.focus) { try { lastFocus.focus({ preventScroll: true }); } catch (e) {} }
+    openPanel('sheet', 'sheetClose');
   }
 
-  // ===== นำเข้าใบจด =====
+  // ===== ใส่ข้อมูลชุดใหม่ลงหน้าจอ =====
+  var started = false;
+  function useData(set) {
+    cur = set;
+    var d = set.data;
+    FRAMES = d.frames;
+    DECOR = d.decor || [];
+    PRODUCTS = d.products || [];
+    LOCS = d.locations || [];
+    framesByKey = {};
+    FRAMES.forEach(function (f) { f.key = norm(f.name); (framesByKey[f.key] = framesByKey[f.key] || []).push(f); });
+    prodByCode = new Map();
+    PRODUCTS.forEach(function (p) { prodByCode.set(String(p[0]).toUpperCase(), { code: p[0], name: p[1], unit: p[2], total: p[3] }); });
+    BOUNDS = calcBounds();
+    rebuild();
+    if (!started) { started = true; U = initialU(); $('mapScroll')._u = U; }
+    buildMap();
+    clearHighlight();
+    renderStatus();
+    renderResults();
+    if (DEBUG) renderDebug();
+  }
+
+  // ===== เก็บ/อ่านผลที่อ่านล่าสุดในเครื่อง (ห่อ try/catch ทุกครั้ง) =====
+  function cacheRead() {
+    try {
+      var o = JSON.parse(localStorage.getItem(LS_KEY));
+      if (o && o.version === 2 && o.data && Array.isArray(o.data.frames) && o.data.frames.length) return o;
+    } catch (e) {}
+    return null;
+  }
+  function cacheWrite(set) {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({ version: 2, savedAt: new Date().toISOString(), src: set.src, label: set.label || '',
+        when: set.when, whenLabel: set.whenLabel, sig: set.sig, data: set.data }));
+      return true;
+    } catch (e) { dbg('เก็บแคชลงเครื่องไม่ได้: ' + e); return false; }
+  }
+
+  // ===========================================================================
+  // ส่วนที่ 3: โหลดข้อมูล  (ก) Supabase -> (ข) ./LAY_OUT_02.xlsx -> (ค) ข้อมูลสำรองที่ฝังมา
+  // ===========================================================================
   var xlsxPromise = null;
   function loadXLSX() {
     if (window.XLSX) return Promise.resolve();
@@ -745,6 +1172,132 @@ h1, h2 { margin: 0; }
     return xlsxPromise;
   }
 
+  function sbHeaders(extra, token) {
+    var hd = { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + (token || SUPABASE_ANON_KEY) };
+    for (var k in extra) hd[k] = extra[k];
+    return hd;
+  }
+  // เรียก Supabase แล้วจดผลไว้ใน lastSb (ใช้ในแผง debug); คืน {status, text, json}
+  function sbFetch(op, url, opts) {
+    return fetch(url, opts).then(function (res) {
+      return res.text().then(function (text) {
+        var json = null;
+        try { json = JSON.parse(text); } catch (e) {}
+        lastSb = { op: op, status: res.status, text: res.ok ? '' : text.slice(0, 300) };
+        dbg('Supabase ' + op + ' -> HTTP ' + res.status + (res.ok ? '' : ' ' + text.slice(0, 120)));
+        return { ok: res.ok, status: res.status, text: text, json: json };
+      });
+    }, function (e) {
+      lastSb = { op: op, status: 0, text: 'เชื่อมต่อไม่ได้: ' + e };
+      dbg('Supabase ' + op + ' -> เชื่อมต่อไม่ได้ ' + e);
+      throw e;
+    });
+  }
+
+  // (ก) เวอร์ชันล่าสุดใน Supabase Storage
+  function tryServer() {
+    if (!SB_ON) { dbg('(ก) ข้าม: ยังไม่ตั้งค่า Supabase'); return Promise.resolve(null); }
+    var notes = [];
+    return sbFetch('list', SUPABASE_URL + '/storage/v1/object/list/' + BUCKET, {
+      method: 'POST',
+      headers: sbHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ prefix: VERSIONS_DIR, limit: 5, offset: 0, sortBy: { column: 'name', order: 'desc' } })
+    }).then(function (r) {
+      if (!r.ok) throw { note: 'โหลดจากระบบออนไลน์ไม่ได้ (HTTP ' + r.status + ')' };
+      var names = (Array.isArray(r.json) ? r.json : []).map(function (o) { return String(o.name || '').replace(/^versions\//, ''); })
+        .filter(function (n) { return /^\d{8}-\d{6}\.xlsx$/.test(n); }).sort().reverse();
+      if (!names.length) throw { note: 'ระบบออนไลน์ยังไม่มีไฟล์ (ยังไม่เคยบันทึก)' };
+      var name = names[0];
+      dbg('(ก) เวอร์ชันล่าสุดใน Supabase: ' + VERSIONS_DIR + name);
+      return fetch(SUPABASE_URL + '/storage/v1/object/public/' + BUCKET + '/' + VERSIONS_DIR + name).then(function (res) {
+        lastSb = { op: 'download', status: res.status, text: res.ok ? '' : 'ดาวน์โหลดไม่สำเร็จ' };
+        dbg('Supabase download -> HTTP ' + res.status);
+        if (!res.ok) throw { note: 'ดาวน์โหลดไฟล์จากระบบออนไลน์ไม่ได้ (HTTP ' + res.status + ')' };
+        return res.arrayBuffer();
+      }).then(function (buf) {
+        var data = parseBuffer(buf);
+        return { src: 'supabase', label: '', when: stampToIso(name), whenLabel: 'อัปโหลดเมื่อ', sig: 'supabase|' + name, ver: name, data: data };
+      });
+    }).catch(function (e) {
+      var msg = e && e.note ? e.note : e && e.friendly ? 'ไฟล์ในระบบออนไลน์อ่านไม่ได้: ' + e.friendly : 'ติดต่อระบบออนไลน์ไม่ได้';
+      dbg('(ก) ล้มเหลว: ' + msg + (e && !e.note && !e.friendly ? ' [' + e + ']' : ''));
+      notes.push(msg);
+      return { fail: notes };
+    });
+  }
+
+  // (ข) ไฟล์ LAY_OUT_02.xlsx บนเว็บเดียวกัน
+  function trySite() {
+    if (location.protocol === 'file:') {           // เปิดจากไฟล์ในเครื่อง: เบราว์เซอร์ไม่ให้ fetch ไฟล์ข้างเคียง
+      dbg('(ข) ข้าม: เปิดจากไฟล์ในเครื่อง (file://)');
+      return Promise.resolve(null);
+    }
+    return fetch(SITE_XLSX, { cache: 'no-cache' }).then(function (res) {
+      dbg('(ข) ' + SITE_XLSX + ' -> HTTP ' + res.status);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var lm = res.headers.get('Last-Modified');
+      return res.arrayBuffer().then(function (buf) {
+        var data = parseBuffer(buf);
+        return { src: 'site', label: '', when: data.fileDate || (lm ? new Date(lm).toISOString() : null), whenLabel: 'ไฟล์แก้ไขล่าสุด',
+          sig: 'site|' + buf.byteLength + '|' + (lm || ''), data: data };
+      });
+    }).catch(function (e) {
+      dbg('(ข) ล้มเหลว: ' + (e && e.friendly ? e.friendly : e));
+      return null;
+    });
+  }
+
+  // ชุดข้อมูลตอนออฟไลน์: แคชในเครื่อง หรือข้อมูลที่ฝังมา (อันที่ใหม่กว่า)
+  function offlineSet() {
+    var emb = { src: 'embedded', label: '', when: EMBED.fileDate || null, whenLabel: 'ไฟล์แก้ไขล่าสุด', sig: 'embedded', data: EMBED };
+    var c = cacheRead();
+    if (c && (!EMBED.generatedAt || c.savedAt > EMBED.generatedAt)) {
+      dbg('ใช้แคชในเครื่อง (บันทึกเมื่อ ' + c.savedAt + ')');
+      return { src: 'cache', label: '', when: c.when, whenLabel: c.whenLabel || 'ไฟล์แก้ไขล่าสุด', sig: c.sig, data: c.data };
+    }
+    dbg('ใช้ข้อมูลสำรองที่ฝังมา (สร้างเมื่อ ' + EMBED.generatedAt + ')');
+    return emb;
+  }
+
+  function boot() {
+    var first = offlineSet();
+    first.notes = [];
+    useData(first);
+    var notes = [];
+    loadXLSX().then(function () {
+      return tryServer();
+    }, function (e) {
+      dbg('โหลดตัวอ่าน Excel (SheetJS) จาก CDN ไม่ได้: ' + e);
+      throw { offline: 'โหลดตัวอ่าน Excel ไม่ได้ (ออฟไลน์?)' };
+    }).then(function (r) {
+      if (r && r.fail) { notes = notes.concat(r.fail); r = null; }
+      return r || trySite();
+    }).then(function (set) {
+      loading = false;
+      if (!set) {
+        first.notes = notes.concat(['โหลดข้อมูลสดไม่ได้ (ออฟไลน์หรือเปิดจากไฟล์ในเครื่อง) ใช้ข้อมูลที่มีอยู่แทน']);
+        if (!(cur && cur.src === 'preview')) renderStatus();
+        else base = first;
+        return;
+      }
+      set.notes = notes;
+      cacheWrite(set);
+      base = set;
+      if (cur && cur.src === 'preview') return;             // กำลังดูตัวอย่างอยู่ ไม่แย่งหน้าจอ
+      if (cur && cur.sig === set.sig) { cur.src = set.src; cur.when = set.when; cur.whenLabel = set.whenLabel; cur.notes = notes; renderStatus(); }
+      else useData(set);
+    }).catch(function (e) {
+      loading = false;
+      first.notes = [(e && e.offline) || 'โหลดข้อมูลสดไม่ได้ ใช้ข้อมูลที่มีอยู่แทน'];
+      dbg('boot: ' + (e && e.offline ? e.offline : e));
+      if (!(cur && cur.src === 'preview')) renderStatus();
+    });
+    base = first;
+  }
+
+  // ===========================================================================
+  // ส่วนที่ 4: ดูตัวอย่างไฟล์ที่เลือก + บันทึกขึ้นระบบ
+  // ===========================================================================
   function showMsg(kind, lines, list) {
     var box = $('importMsg');
     box.textContent = '';
@@ -757,115 +1310,156 @@ h1, h2 { margin: 0; }
     box.appendChild(inner);
   }
 
-  // อ่านค่ารหัส: ตัวเลข -> สตริงเต็ม (ไม่ใช่ 5.6e+11), ข้อความ -> trim
-  function cellStr(v) {
-    if (v == null) return '';
-    if (typeof v === 'number') return isFinite(v) ? String(v) : '';
-    return String(v).trim();
-  }
-  function cellQty(v) {
-    if (typeof v === 'number') return isFinite(v) ? v : null;
-    var s = String(v == null ? '' : v).replace(/,/g, '').trim();
-    if (!s) return null;
-    var n = Number(s);
-    return isNaN(n) ? null : n;
-  }
-
-  // อ่านทุกชีตที่ชื่อตรงกับกรอบ (ทำชีต=Y) แถว 6 เป็นต้นไป: B=ระดับ C=รหัส F=จำนวน G=หมายเหตุ
-  function parseWorkbook(wb) {
-    var locs = [], sheets = 0, unknown = [];
-    FRAMES.forEach(function (f) {
-      if (!f.store) return;
-      var ws = wb.Sheets[f.id];
-      if (!ws) return;
-      sheets++;
-      var ref = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
-      var endR = Math.max(ref.e.r, 5);
-      var rows = XLSX.utils.sheet_to_json(ws, {
-        header: 1, raw: true, defval: '',
-        range: { s: { r: 5, c: 0 }, e: { r: endR, c: 6 } }
-      });
-      rows.forEach(function (r) {
-        var code = cellStr(r[2]);
-        if (!code) return;
-        var p = prodByCode.get(code.toUpperCase());
-        var loc = {
-          frame: f.id,
-          level: cellStr(r[1]),
-          code: p ? p.code : code,
-          qty: cellQty(r[5]),
-          note: cellStr(r[6])
-        };
-        if (!p) unknown.push(code + ' (' + f.name + ')');
-        locs.push(loc);
-      });
-    });
-    return { locs: locs, sheets: sheets, unknown: unknown };
-  }
-
-  function onFileChosen(ev) {
-    var input = ev.target;
-    var file = input.files && input.files[0];
+  function onFile(file) {
     if (!file) return;
+    $('preview').textContent = '';
     showMsg('warn', ['กำลังอ่านไฟล์ ' + file.name + ' ...']);
     loadXLSX().then(function () {
       return file.arrayBuffer();
     }, function () {
-      throw { friendly: 'โหลดตัวอ่าน Excel ไม่ได้ ตรวจอินเทอร์เน็ต' };
+      throw friendly('โหลดตัวอ่าน Excel ไม่ได้ ตรวจอินเทอร์เน็ต');
     }).then(function (buf) {
-      var wb = XLSX.read(buf, { type: 'array' });
-      var res = parseWorkbook(wb);
-      if (!res.locs.length) {
-        showMsg('err', ['ไฟล์นี้ไม่มีข้อมูลใบจด (อ่าน ' + res.sheets + ' ชีต · 0 รายการ) ไม่มีการแทนที่ข้อมูลเดิม']);
-        return;
-      }
-      if (!window.confirm('แทนที่ตำแหน่งสินค้าทั้งหมดด้วยข้อมูลจากไฟล์นี้?\n(พบ ' + res.locs.length + ' รายการ จาก ' + res.sheets + ' ชีต)')) {
-        showMsg('warn', ['ยกเลิกการนำเข้า ข้อมูลเดิมไม่เปลี่ยน']);
-        return;
-      }
-      var importedAt = new Date().toISOString();
-      state = { mode: 'real', importedAt: importedAt, locations: res.locs };
-      var saved = lsSet(JSON.stringify({ version: 1, importedAt: importedAt, locations: res.locs }));
-      afterDataChange();
-      var lines = ['อ่าน ' + res.sheets + ' ชีต · ' + res.locs.length + ' รายการ · รหัสไม่พบ ' + res.unknown.length];
-      if (!saved) lines.push('เก็บลงเครื่องไม่ได้ ข้อมูลนี้จะหายเมื่อปิดหรือรีเฟรชหน้า');
-      showMsg(res.unknown.length || !saved ? 'warn' : 'ok', lines, res.unknown.length ? res.unknown : null);
+      var data = parseBuffer(buf);
+      pending = { buf: buf, name: file.name };
+      var set = { src: 'preview', label: file.name, when: new Date().toISOString(), whenLabel: 'เลือกเมื่อ', sig: 'preview|' + Date.now(), data: data, notes: [] };
+      useData(set);
+      renderPreview(set);
+      $('importMsg').textContent = '';
     }).catch(function (e) {
-      if (e && e.friendly) showMsg('err', [e.friendly]);
-      else {
-        console.warn('layoutFinder: นำเข้าไม่สำเร็จ', e);
-        showMsg('err', ['อ่านไฟล์ไม่สำเร็จ ตรวจว่าเป็นไฟล์ .xlsx ที่ถูกต้อง']);
-      }
-    }).then(function () { input.value = ''; });
+      if (e && e.friendly) showMsg('err', [e.friendly, 'ไม่มีการเปลี่ยนแปลงข้อมูลที่ใช้อยู่']);
+      else { dbg('อ่านไฟล์ล้มเหลว: ' + e); showMsg('err', ['อ่านไฟล์ไม่สำเร็จ ตรวจว่าเป็นไฟล์ .xlsx ที่ถูกต้อง']); }
+    });
   }
 
-  function resetToMock() {
-    if (!window.confirm('กลับไปใช้ข้อมูลสมมติ? ข้อมูลที่นำเข้าไว้จะถูกลบออกจากเครื่องนี้')) return;
-    lsDel();
-    state = { mode: 'mock', importedAt: null, locations: DATA.mockLocations.slice() };
-    afterDataChange();
-    showMsg('ok', ['กลับไปใช้ข้อมูลสมมติแล้ว']);
+  function renderPreview(set) {
+    var box = $('preview');
+    box.textContent = '';
+    var d = set.data, an = analyze(d);
+    var lines = ['ตัวอย่างจากไฟล์ ' + set.label + ' (ยังไม่ได้บันทึก — ผังและค้นหาด้านบนกำลังแสดงข้อมูลนี้)',
+      'กรอบบนผัง ' + d.frames.length + ' · ตกแต่ง ' + d.decor.length + ' · สินค้า ' + fmtNum(d.products.length) + ' รายการ · ตำแหน่งสินค้า ' + fmtNum(d.locations.length) + ' รายการ'];
+    var kind = 'ok';
+    if (!d.locations.length) { lines.push('ชีต "รวม" ยังว่าง (ไม่มีตำแหน่งสินค้า) — จะบันทึกเฉพาะผังและรายการสินค้า'); kind = 'warn'; }
+    var warns = [];
+    if (d.skipped.length) warns.push('ข้ามแถวที่ข้อมูลไม่ครบ ' + d.skipped.length + ' แถว (เช่น ' + d.skipped.slice(0, 5).map(function (s) { return 'แถว ' + s.row; }).join(', ') + ')');
+    if (an.unmatched.length) {
+      kind = 'warn';
+      lines.push('คำเตือน: พบ Location ที่ไม่ตรงกับชื่อกรอบใดบนผัง ' + an.unmatched.length + ' ชื่อ (ตรวจการสะกด/ช่องว่าง ให้ตรงกับชื่อบนชีต ผังคลัง)');
+      an.unmatched.slice(0, 30).forEach(function (u) { warns.push('"' + u.loc + '" แถว ' + u.rows.slice(0, 6).join(', ') + (u.rows.length > 6 ? ' ...(' + u.rows.length + ' แถว)' : '')); });
+      if (an.unmatched.length > 30) warns.push('และอีก ' + (an.unmatched.length - 30) + ' ชื่อ');
+    }
+    var inner = h('div', { class: 'box ' + kind }, lines.map(function (t) { return h('div', null, [t]); }));
+    if (warns.length) { var ul = h('ul'); warns.forEach(function (t) { ul.appendChild(h('li', null, [t])); }); inner.appendChild(ul); }
+    box.appendChild(inner);
+    var bar = h('div', { class: 'pvbar' });
+    if (CAN_UPLOAD) bar.appendChild(h('button', { class: 'btn primary', type: 'button', id: 'btnSave', onclick: saveToServer }, ['บันทึกขึ้นระบบ']));
+    else bar.appendChild(h('div', { class: 'hint' }, [SB_ON ? 'ยังไม่ได้ตั้งอีเมลผู้ใช้กลาง (UPLOAD_EMAIL) จึงบันทึกขึ้นระบบไม่ได้' : 'ยังไม่ได้ตั้งค่าระบบออนไลน์ จึงบันทึกขึ้นระบบไม่ได้ (ดูตัวอย่างได้อย่างเดียว) — ดูวิธีตั้งค่าใน SETUP.md']));
+    bar.appendChild(h('button', { class: 'btn', type: 'button', onclick: cancelPreview }, ['ยกเลิกตัวอย่าง (กลับไปข้อมูลเดิม)']));
+    box.appendChild(bar);
   }
 
-  function afterDataChange() {
-    rebuild();
-    renderStatus();
-    updateCounts();
-    clearHighlight();
-    renderResults();
+  function cancelPreview() {
+    pending = null;
+    $('preview').textContent = '';
+    $('importMsg').textContent = '';
+    if (base) useData(base); else boot();
+  }
+
+  // ---- ช่องใส่รหัสผ่าน (ไม่ใช้ window.prompt เพราะซ่อนตัวอักษรไม่ได้) ----
+  var pwDone = null;
+  function askPassword(errText) {
+    return new Promise(function (resolve) {
+      pwDone = resolve;
+      $('pwInput').value = '';
+      var old = $('pwSheet').querySelector('.pwerr');
+      if (old) old.remove();
+      if (errText) $('pwSheet').querySelector('.bd').appendChild(h('div', { class: 'pwerr' }, [errText]));
+      openPanel('pwSheet', 'pwInput');
+    });
+  }
+  function submitPw() {
+    var v = $('pwInput').value;
+    if (!v) { $('pwInput').focus(); return; }
+    var f = pwDone; pwDone = null;
+    $('pwInput').value = '';
+    closeSheet();
+    if (f) f(v);
+  }
+
+  // ---- ล็อกอินด้วยอีเมลกลาง + รหัสผ่านกลาง แล้วอัปโหลดเวอร์ชันใหม่ ----
+  function login(pw) {
+    return sbFetch('login', SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: UPLOAD_EMAIL, password: pw })
+    }).then(function (r) {
+      if (r.ok && r.json && r.json.access_token) return r.json.access_token;
+      if (r.status === 400 || r.status === 401) throw { retry: 'รหัสผ่านไม่ถูกต้อง ลองใหม่อีกครั้ง' };
+      throw { msg: 'ล็อกอินไม่สำเร็จ (HTTP ' + r.status + ')' };
+    });
+  }
+  function upload(token) {
+    var name = utcStamp(new Date()) + '.xlsx';
+    return sbFetch('upload', SUPABASE_URL + '/storage/v1/object/' + BUCKET + '/' + VERSIONS_DIR + name, {
+      method: 'POST',
+      headers: sbHeaders({ 'Content-Type': XLSX_MIME, 'x-upsert': 'false' }, token),
+      body: new Blob([pending.buf], { type: XLSX_MIME })
+    }).then(function (r) {
+      if (r.ok) return name;
+      if (r.status === 401 || r.status === 403) throw { msg: 'ไม่มีสิทธิ์บันทึก (HTTP ' + r.status + ') — ตรวจว่ารัน supabase/setup.sql แล้ว' };
+      if (r.status === 409 || /already exists|Duplicate/i.test(r.text)) throw { msg: 'ชื่อไฟล์ซ้ำ (กดบันทึกพร้อมกัน) รอสักครู่แล้วกดอีกครั้ง' };
+      throw { msg: 'บันทึกไม่สำเร็จ (HTTP ' + r.status + ')' };
+    });
+  }
+  function saveToServer(errText) {
+    if (!pending || !CAN_UPLOAD) return;
+    var btn = $('btnSave');
+    askPassword(typeof errText === 'string' ? errText : '').then(function (pw) {
+      if (pw == null) return;
+      if (btn) btn.disabled = true;
+      showMsg('warn', ['กำลังบันทึกขึ้นระบบ ...']);
+      return login(pw).then(upload).then(function (name) {
+        var set = { src: 'supabase', label: '', when: stampToIso(name), whenLabel: 'อัปโหลดเมื่อ', sig: 'supabase|' + name, ver: name, data: cur.data, notes: [] };
+        cacheWrite(set);
+        base = set;
+        pending = null;
+        $('preview').textContent = '';
+        useData(set);
+        showMsg('ok', ['บันทึกขึ้นระบบแล้ว (' + VERSIONS_DIR + name + ') — ทุกคนจะได้ข้อมูลนี้เมื่อเปิดหน้านี้ครั้งต่อไป']);
+      });
+    }).catch(function (e) {
+      if (e && e.retry) { showMsg('err', [e.retry]); saveToServer(e.retry); return; }
+      showMsg('err', [(e && e.msg) || 'ติดต่อระบบออนไลน์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่ (ข้อมูลตัวอย่างยังอยู่)']);
+    }).then(function () { if ($('btnSave')) $('btnSave').disabled = false; });
+  }
+
+  // ===========================================================================
+  // ส่วนที่ 5: แผง DEBUG (ซ่อนตามปกติ เปิดด้วย ?debug=1)
+  // ===========================================================================
+  function renderDebug() {
+    var el = $('dbg');
+    if (!el) {
+      el = h('details', { id: 'dbg', class: 'dbg', open: 'open' }, [h('summary', null, ['DEBUG (?debug=1)']), h('pre')]);
+      $('mapSec').parentNode.appendChild(el);
+    }
+    var L = [];
+    if (cur) {
+      var an = analyze(cur.data);
+      L.push('แหล่งข้อมูลที่ใช้: ' + cur.src + (cur.ver ? ' (' + cur.ver + ')' : '') + (cur.label ? ' [' + cur.label + ']' : '') + ' sig=' + cur.sig);
+      L.push('เวลาไฟล์: ' + (cur.when || '-') + ' | โหลดอยู่: ' + loading);
+      L.push('ผลอ่าน: กรอบ ' + cur.data.frames.length + ' | ตกแต่ง ' + cur.data.decor.length + ' ' + JSON.stringify(an.decorByType) +
+        ' | สินค้า ' + cur.data.products.length + ' | ตำแหน่ง ' + cur.data.locations.length + ' | ข้ามแถว ' + (cur.data.skipped || []).length);
+      L.push('Location ที่ไม่ตรงกรอบ (' + an.unmatched.length + '): ' + an.unmatched.map(function (u) { return u.loc + ' [แถว ' + u.rows.slice(0, 5).join(',') + ']'; }).join('; '));
+    }
+    L.push('Supabase: ' + (SB_ON ? 'เปิด (' + SUPABASE_URL + ')' : 'ปิด (ยังไม่ตั้งค่า)') + ' | อัปโหลด: ' + (CAN_UPLOAD ? 'พร้อม' : 'ปิด'));
+    L.push('Supabase ล่าสุด: ' + (lastSb ? lastSb.op + ' HTTP ' + lastSb.status + (lastSb.text ? ' ' + lastSb.text : '') : '-'));
+    L.push('--- log ---');
+    el.querySelector('pre').textContent = L.concat(dbgLog).join('\n');
   }
 
   // ===== เริ่มทำงาน =====
-  loadSaved();
-  rebuild();
-  U = initialU();
-  $('mapScroll')._u = U;
-  buildMap();
   $('zoomIn').addEventListener('click', function () { setScale(U * 1.25); });
   $('zoomOut').addEventListener('click', function () { setScale(U / 1.25); });
   $('zoomFit').addEventListener('click', function () { setScale(fitU()); });
-  renderStatus();
-  renderResults();
 
   var timer = null;
   $('q').addEventListener('input', function () {
@@ -879,12 +1473,32 @@ h1, h2 { margin: 0; }
     renderResults();
     $('q').focus();
   });
-  $('btnImport').addEventListener('click', function () { $('file').click(); });
-  $('file').addEventListener('change', onFileChosen);
-  $('btnReset').addEventListener('click', resetToMock);
+  $('drop').addEventListener('click', function () { $('file').click(); });
+  $('file').addEventListener('change', function (ev) {
+    var input = ev.target, f = input.files && input.files[0];
+    onFile(f);
+    input.value = '';
+  });
+  // ลากไฟล์มาวางที่ไหนในหน้าก็ได้ (กันเบราว์เซอร์เปิดไฟล์ทิ้งหน้าเว็บ)
+  ['dragenter', 'dragover'].forEach(function (n) {
+    window.addEventListener(n, function (e) { e.preventDefault(); $('drop').classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (n) {
+    window.addEventListener(n, function (e) { e.preventDefault(); if (n === 'drop' || !e.relatedTarget) $('drop').classList.remove('over'); });
+  });
+  window.addEventListener('drop', function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) onFile(f);
+  });
   $('sheetClose').addEventListener('click', closeSheet);
   $('backdrop').addEventListener('click', closeSheet);
+  $('pwCancel').addEventListener('click', closeSheet);
+  $('pwOk').addEventListener('click', submitPw);
+  $('pwInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') submitPw(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
+
+  if (DEBUG) window.layoutFinderDebug = { parse: function (buf) { return parseBuffer(buf); }, analyze: analyze, state: function () { return { cur: cur, loading: loading }; } };
+  boot();
 })();
 </script>
 </body>
