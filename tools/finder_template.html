@@ -7,18 +7,21 @@
 <title>หาของในคลัง</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Kanit:wght@600;700&display=swap" rel="stylesheet">
 <style>
 /* ===== สีและค่าพื้นฐาน (แก้หน้าตาที่นี่) ===== */
 :root {
-  --bg: #f3f5f8;
+  --bg: #e9ebee;
   --fg: #111418;
-  --muted: #4b5563;
+  --muted: #454d59;
   --card: #ffffff;
   --border: #c5ccd6;
   --border-strong: #2b3440;
   --accent: #0b5cad;
   --accent-fg: #ffffff;
+  --sign-dark: #1b1e22;
+  --safety: #FFC20E;
+  --on-safety: #111111;
   --pin-bg: #0b5cad;
   --pin-fg: #ffffff;
   --none-bg: #e5e7eb;
@@ -37,13 +40,14 @@
   --map-red: #ff0000;
   --shadow: 0 1px 3px rgba(0,0,0,.18);
   --font: 'Sarabun', 'Noto Sans Thai', 'Tahoma', system-ui, sans-serif;
+  --font-head: 'Kanit', var(--font);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #11151b;
+    --bg: #121417;
     --fg: #f1f3f5;
     --muted: #b6bdc8;
-    --card: #1b222c;
+    --card: #1c1f24;
     --border: #3a4554;
     --border-strong: #8b97a8;
     --accent: #6cb2ff;
@@ -83,8 +87,14 @@ h1, h2 { margin: 0; }
 .wrap { max-width: 720px; margin: 0 auto; padding: 0 12px; }
 
 /* หัวเว็บ */
-.top { padding: 14px 0 8px; }
-.top h1 { font-size: 26px; font-weight: 700; letter-spacing: .2px; }
+.top {
+  /* แถบป้ายสีเข้มเต็มความกว้างจอ + เส้นเหลืองนิรภัยด้านล่าง */
+  margin: 0 calc(50% - 50vw) 10px;
+  padding: 14px calc(50vw - 50%) 10px;
+  background: var(--sign-dark);
+  border-bottom: 5px solid var(--safety);
+}
+.top h1 { font-family: var(--font-head); font-size: 28px; font-weight: 700; letter-spacing: .2px; color: #fff; line-height: 1.25; }
 
 /* แถบสถานะข้อมูล */
 .status {
@@ -93,9 +103,31 @@ h1, h2 { margin: 0; }
   border: 2px solid;
   border-radius: 8px;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 16px;
 }
-.status .l2 { margin-top: 3px; font-weight: 400; font-size: 14px; }
+.status .l2 { margin-top: 3px; font-weight: 400; font-size: 16px; }
+/* แถบสถานะย่อ/ขยายได้: ปกติโชว์บรรทัดเดียว แตะเพื่อดูหมายเหตุ (.l2) */
+.status.has-more { padding: 0 12px; }
+.status.has-more .l2 { display: none; }
+.status.has-more.open .l2 { display: block; }
+.status.has-more.open .l2:last-child { padding-bottom: 9px; }
+.status .tog {
+  display: flex; align-items: center; gap: 8px;
+  width: calc(100% + 24px); margin: 0 -12px; min-height: 48px; padding: 9px 12px;
+  border: 0; background: transparent; color: inherit;
+  font: inherit; text-align: left; cursor: pointer;
+}
+.status .tog:focus-visible { outline: 3px solid var(--sign-dark); outline-offset: -4px; }
+.status .tog .txt { flex: 1 1 auto; min-width: 0; }
+.status.has-more:not(.open) .tog .txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* ตอนย่อ: บรรทัดเดียว ตัดท้ายด้วย … */
+.status .tog .more { flex: 0 0 auto; font-size: 16px; font-weight: 400; text-decoration: underline; }
+.status.open .tog .more { display: none; }
+.status .tog::after {
+  content: ''; flex: 0 0 auto; width: 9px; height: 9px;
+  border-right: 3px solid currentColor; border-bottom: 3px solid currentColor;
+  transform: rotate(45deg); margin: -4px 2px 0 0;
+}
+.status.open .tog::after { transform: rotate(-135deg); margin: 4px 2px 0 0; }
 .status.warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
 .status.ok { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-border); }
 
@@ -117,7 +149,7 @@ h1, h2 { margin: 0; }
   border: 2px solid var(--border-strong);
   border-radius: 10px;
 }
-.searchbar input:focus { outline: 3px solid var(--accent); outline-offset: 1px; }
+.searchbar input:focus { outline: 4px solid var(--safety); outline-offset: 0; box-shadow: 0 0 0 2px var(--sign-dark); }
 .btn {
   min-height: 48px;
   padding: 0 16px;
@@ -132,51 +164,65 @@ h1, h2 { margin: 0; }
 
 /* ผลลัพธ์ */
 #results { padding-top: 10px; }
-.count-line { margin: 2px 2px 8px; color: var(--muted); font-size: 15px; }
-.hint { margin: 4px 2px 12px; color: var(--muted); font-size: 15px; }
+.count-line { margin: 2px 2px 8px; color: var(--muted); font-size: 16px; }
+.hint { margin: 4px 2px 12px; color: var(--muted); font-size: 16px; }
 .res {
+  /* ป้ายชั้นวาง: แถบรหัสสีเข้มด้านบน ชื่อสินค้าตัวใหญ่ ปุ่มตำแหน่งสีเหลือง */
+  display: flex; flex-direction: column;
   background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border: 2px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 0;
   margin-bottom: 10px;
   box-shadow: var(--shadow);
   min-height: 44px;
+  overflow: hidden;
 }
 .res.clickable { cursor: pointer; }
-.res .nm { font-weight: 700; font-size: 17px; overflow-wrap: anywhere; }
-.res .cd { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
-.res .locs { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.res .nm { font-family: var(--font-head); font-weight: 700; font-size: 20px; line-height: 1.3; padding: 10px 12px 0; overflow-wrap: anywhere; }
+.res .cd { order: -1; padding: 5px 12px; background: var(--sign-dark); color: #fff; font-size: 16px; font-weight: 600; letter-spacing: .3px; overflow-wrap: anywhere; }
+.res .locs { margin: 0; padding: 8px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
 .loc {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  width: 100%; min-height: 44px;
+  width: 100%; min-height: 48px;
   padding: 6px 10px;
-  border: 0; border-radius: 8px;
-  background: var(--pin-bg); color: var(--pin-fg);
+  border: 2px solid var(--on-safety); border-radius: 6px;
+  background: var(--safety); color: var(--on-safety);
+  font-family: var(--font-head); font-weight: 700;
   text-align: left;
 }
-.loc .pin { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
-.loc .qty { flex: 0 1 auto; min-width: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; text-align: right; }
-.loc.nomap { background: var(--none-bg); color: var(--none-fg); cursor: default; }
+.loc:hover { filter: brightness(1.06); }
+.loc:active { transform: translateY(1px); filter: brightness(.92); }
+.loc:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+.loc .pin { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 17px; overflow-wrap: anywhere; }
+.loc .pin svg { flex: 0 0 auto; }
+.loc .qty { flex: 0 1 auto; min-width: 0; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; text-align: right; }
+.loc.nomap { background: var(--none-bg); color: var(--none-fg); border-color: var(--none-fg); cursor: default; }
+.loc.nomap:hover { filter: none; }
+.loc.nomap:active { transform: none; filter: none; }
 .noloc {
-  display: inline-block; margin-top: 8px;
+  display: inline-block; margin: 8px 12px 12px; align-self: flex-start;
   padding: 8px 12px; min-height: 36px;
   background: var(--none-bg); color: var(--none-fg);
   border-radius: 8px; font-weight: 600;
 }
-.res .total-line { margin-top: 6px; font-size: 14px; color: var(--muted); }
+.res .total-line { margin-top: 6px; font-size: 16px; color: var(--muted); }
 
 /* ผังคลัง */
 .map-sec { margin-top: 18px; }
-.map-sec h2 { font-size: 20px; margin-bottom: 4px; }
-.map-sec .sub { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 13px; margin-bottom: 8px; color: var(--muted); }
+/* จอคอม: ส่วนผังกว้างกว่าคอลัมน์ 720px (กว้างสุด 900px — เดย์เลือก) */
+@media (min-width: 900px) {
+  .map-sec { margin-left: calc(348px - min(450px, 50vw - 24px)); margin-right: calc(348px - min(450px, 50vw - 24px)); }
+}
+.map-sec h2 { font-family: var(--font-head); font-size: 22px; margin-bottom: 4px; }
+.map-sec .sub { color: var(--muted); font-size: 16px; margin-bottom: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 16px; margin-bottom: 8px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .legend i { width: 14px; height: 14px; border: 1.5px solid var(--border-strong); display: inline-block; }
 .legend i.wall { height: 0; width: 18px; border: 0; border-top: 3px solid var(--map-red); }
 .zoombar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
-.zoombar .btn { min-height: 44px; min-width: 48px; padding: 0 14px; }
-.zoombar .zl { color: var(--muted); font-size: 13px; margin-left: auto; }
+.zoombar .btn { min-height: 48px; min-width: 48px; padding: 0 14px; }
+.zoombar .zl { color: var(--muted); font-size: 16px; margin-left: auto; }
 /* ผัง: วางกรอบตามพิกัดจริง (1 ช่อง = --u px) เลื่อนซ้าย-ขวาได้ ผืนผังเป็นกระดาษขาวทั้งโหมดสว่าง/มืด */
 .mapscroll {
   overflow-x: auto; overflow-y: hidden;
@@ -224,9 +270,24 @@ h1, h2 { margin: 0; }
 @media (prefers-reduced-motion: reduce) { .frame.hl { animation: none; } }
 
 /* จัดการข้อมูล */
-.manage { margin: 24px 0 40px; padding: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
+.manage { margin: 24px 0 40px; padding: 0 14px; background: var(--card); border: 2px solid var(--border-strong); border-radius: 6px; }
+.manage[open] { padding-bottom: 14px; }
 .manage h2 { font-size: 20px; margin-bottom: 4px; }
-.manage p { margin: 4px 0 10px; color: var(--muted); font-size: 14px; }
+/* หัวข้อจัดการข้อมูล: พับไว้ก่อน แตะเพื่อเปิด */
+.manage summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-height: 48px; padding: 8px 0; cursor: pointer; list-style: none;
+  font-family: var(--font-head); font-size: 20px; font-weight: 700;
+}
+.manage summary::-webkit-details-marker { display: none; }
+.manage summary::after {
+  content: ''; flex: 0 0 auto; width: 10px; height: 10px;
+  border-right: 3px solid currentColor; border-bottom: 3px solid currentColor;
+  transform: rotate(45deg); margin: -4px 4px 0 0;
+}
+.manage[open] summary::after { transform: rotate(-135deg); margin: 4px 4px 0 0; }
+.manage summary:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+.manage p { margin: 4px 0 10px; color: var(--muted); font-size: 16px; }
 .manage .btns { display: flex; flex-direction: column; gap: 10px; }
 .manage .btn { width: 100%; }
 .drop {
@@ -236,7 +297,7 @@ h1, h2 { margin: 0; }
   text-align: center; font-weight: 600; line-height: 1.5;
 }
 .drop.over { background: var(--ok-bg); border-color: var(--ok-border); }
-.drop small { display: block; color: var(--muted); font-weight: 400; font-size: 13px; }
+.drop small { display: block; color: var(--muted); font-weight: 400; font-size: 16px; }
 .pvbar { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
 #preview { margin-top: 12px; }
 #preview .box ul { max-height: 220px; overflow-y: auto; }
@@ -245,12 +306,33 @@ h1, h2 { margin: 0; }
 .dbg { margin: 0 0 40px; padding: 10px 12px; background: #101418; color: #d7ffd7; border: 2px dashed #3fb950; border-radius: 8px; font-size: 12px; }
 .dbg summary { cursor: pointer; font-weight: 700; color: #7ee787; }
 .dbg pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0; font-family: ui-monospace, Menlo, Consolas, monospace; }
-#importMsg { margin-top: 12px; font-size: 15px; }
+#importMsg { margin-top: 12px; font-size: 16px; }
 #importMsg .box, #preview .box { padding: 10px 12px; border-radius: 8px; border: 2px solid; overflow-wrap: anywhere; }
 #importMsg .box.ok, #preview .box.ok { background: var(--ok-bg); color: var(--ok-fg); border-color: var(--ok-border); }
 #importMsg .box.warn, #preview .box.warn { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn-border); }
 #importMsg .box.err, #preview .box.err { background: var(--err-bg); color: var(--err-fg); border-color: var(--hl); }
 #importMsg ul, #preview ul { margin: 6px 0 0; padding-left: 20px; }
+/* ส่วนที่เปลี่ยนเทียบข้อมูลเดิม (ตัวอย่างนำเข้า) */
+#preview .chgwrap { margin-top: 10px; padding: 10px 12px; background: var(--card); color: var(--fg); border: 2px solid var(--border-strong); border-radius: 8px; overflow-wrap: anywhere; }
+#preview .chgtitle { font-family: var(--font-head); font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+#preview .chgline { margin: 2px 0; font-size: 16px; }
+#preview details.chg { margin-top: 8px; border: 2px solid var(--border-strong); border-radius: 8px; padding: 0 10px; }
+#preview details.chg summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  min-height: 48px; padding: 8px 0; cursor: pointer; list-style: none;
+  font-family: var(--font-head); font-size: 16px; font-weight: 700;
+}
+#preview details.chg summary::-webkit-details-marker { display: none; }
+#preview details.chg summary::after {
+  content: ''; flex: 0 0 auto; width: 9px; height: 9px;
+  border-right: 3px solid currentColor; border-bottom: 3px solid currentColor;
+  transform: rotate(45deg); margin: -4px 4px 0 0;
+}
+#preview details.chg[open] summary::after { transform: rotate(-135deg); margin: 4px 4px 0 0; }
+#preview details.chg summary:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+#preview details.chg ul { max-height: 260px; overflow-y: auto; margin: 0 0 10px; font-size: 16px; }
+#preview details.chg li { margin: 2px 0; }
+#preview details.chg.del { background: var(--err-bg); color: var(--err-fg); border-color: var(--hl); }
 
 /* bottom sheet */
 .backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.55); display: none; }
@@ -267,16 +349,16 @@ h1, h2 { margin: 0; }
 @keyframes up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (min-width: 760px) { .sheet { left: 50%; right: auto; width: 640px; transform: translateX(-50%); } .sheet.open { animation: none; } }
 .sheet .hd { padding: 14px 16px 8px; border-bottom: 1px solid var(--border); }
-.sheet .hd h2 { font-size: 20px; overflow-wrap: anywhere; }
-.sheet .hd .meta { color: var(--muted); font-size: 14px; }
+.sheet .hd h2 { font-family: var(--font-head); font-size: 20px; overflow-wrap: anywhere; }
+.sheet .hd .meta { color: var(--muted); font-size: 16px; }
 .sheet .bd { overflow-y: auto; padding: 8px 16px; flex: 1 1 auto; -webkit-overflow-scrolling: touch; }
 .sheet .ft { padding: 10px 16px 14px; border-top: 1px solid var(--border); }
 .sheet .ft .btn { width: 100%; min-height: 52px; font-size: 18px; }
 .it { padding: 10px 0; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 1fr; gap: 2px; }
 .it:last-child { border-bottom: 0; }
 .it .n { font-weight: 700; overflow-wrap: anywhere; }
-.it .c { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
-.it .note { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.it .c { color: var(--muted); font-size: 16px; overflow-wrap: anywhere; }
+.it .note { font-size: 16px; color: var(--muted); overflow-wrap: anywhere; }
 .empty { padding: 20px 0; color: var(--muted); text-align: center; }
 </style>
 </head>
@@ -306,19 +388,19 @@ h1, h2 { margin: 0; }
       <button id="zoomOut" class="btn" type="button" aria-label="ย่อผัง">−</button>
       <button id="zoomIn" class="btn" type="button" aria-label="ขยายผัง">+</button>
       <button id="zoomFit" class="btn" type="button">พอดีจอ</button>
-      <span class="zl">เลื่อนซ้าย-ขวาได้</span>
+      <span class="zl">กด + เพื่อขยาย</span>
     </div>
     <div id="mapScroll" class="mapscroll"><div id="map" class="map"></div></div>
   </section>
 
-  <section class="manage">
-    <h2>จัดการข้อมูล</h2>
+  <details class="manage">
+    <summary>จัดการข้อมูล</summary>
     <p>ผังและตำแหน่งสินค้าอ่านจากไฟล์ LAY_OUT_02.xlsx (ชีต ผังคลัง / รวม / สินค้า) ลากไฟล์ใหม่มาวางเพื่อดูตัวอย่างก่อนบันทึก</p>
     <button id="drop" class="drop" type="button">ลากไฟล์ .xlsx มาวางที่นี่ หรือแตะเพื่อเลือกไฟล์<small>ดูตัวอย่างได้ทันที ยังไม่มีอะไรเปลี่ยนจนกว่าจะกด "บันทึกขึ้นระบบ"</small></button>
     <input id="file" type="file" accept=".xlsx" hidden>
     <div id="preview" role="status"></div>
     <div id="importMsg" role="status"></div>
-  </section>
+  </details>
 </div>
 
 <div id="backdrop" class="backdrop"></div>
@@ -757,6 +839,9 @@ h1, h2 { margin: 0; }
   // ---- ไฟล์ (ArrayBuffer) -> ข้อมูลพร้อมใช้ ; ผิดปกติ = throw { friendly: 'ข้อความไทย' } ----
   function parseBuffer(buf) {
     var wb;
+    // ไฟล์ .xlsx ต้องขึ้นต้นด้วย "PK" (เป็น zip) — ไม่ใช่ = ไฟล์อื่นหรือไฟล์เสีย
+    var head = new Uint8Array(buf, 0, Math.min(2, buf.byteLength));
+    if (head.length < 2 || head[0] !== 0x50 || head[1] !== 0x4B) throw friendly('ไฟล์นี้ไม่ใช่ไฟล์ Excel (.xlsx) หรือไฟล์เสีย — เลือกไฟล์ LAY_OUT_02.xlsx ใหม่');
     try {
       wb = XLSX.read(buf, { type: 'array', cellStyles: true, bookFiles: true, sheets: [SHEET_MAP, SHEET_ALL, SHEET_PROD] });
     } catch (e) {
@@ -785,6 +870,55 @@ h1, h2 { margin: 0; }
     var decor = {};
     d.decor.forEach(function (x) { decor[x.type] = (decor[x.type] || 0) + 1; });
     return { unmatched: order.map(function (k) { return byName[k]; }), decorByType: decor };
+  }
+
+  // เทียบข้อมูลเก่า/ใหม่ตามรหัสสินค้า (ไม่แตะ DOM) -> เพิ่ม / หายไป / ย้ายที่ + กรอบบนผังที่เพิ่ม/ลบ
+  function diffData(oldD, newD) {
+    var res = { added: [], removed: [], moved: [], framesAdded: [], framesRemoved: [] };
+    if (!oldD || !newD) return res;
+    function locMap(d) {                       // รหัส(ตัวใหญ่) -> { code, locs: Map(norm(loc) -> loc เดิม) }
+      var m = new Map();
+      (d.locations || []).forEach(function (l) {
+        if (!l || l.code == null) return;
+        var key = String(l.code).trim().toUpperCase();
+        if (!key) return;
+        var e = m.get(key);
+        if (!e) { e = { code: String(l.code).trim(), locs: new Map() }; m.set(key, e); }
+        var nk = norm(l.loc);
+        if (nk && !e.locs.has(nk)) e.locs.set(nk, String(l.loc).trim());
+      });
+      m.forEach(function (e, k) { if (!e.locs.size) m.delete(k); });  // ไม่มีตำแหน่งจริง = ไม่นับ
+      return m;
+    }
+    function nameMap(d) {
+      var m = new Map();
+      (d.products || []).forEach(function (p) { if (p && p[0] != null) m.set(String(p[0]).trim().toUpperCase(), p[1] == null ? '' : String(p[1])); });
+      return m;
+    }
+    function vals(m) { var a = []; m.forEach(function (v) { a.push(v); }); return a; }
+    var oldL = locMap(oldD), newL = locMap(newD), oldN = nameMap(oldD), newN = nameMap(newD);
+    function nameOf(key) { return newN.get(key) || oldN.get(key) || ''; }
+    newL.forEach(function (n, key) {
+      var o = oldL.get(key);
+      if (!o) { res.added.push({ code: n.code, name: nameOf(key), locs: vals(n.locs) }); return; }
+      var same = o.locs.size === n.locs.size;
+      if (same) n.locs.forEach(function (_v, nk) { if (!o.locs.has(nk)) same = false; });
+      if (!same) res.moved.push({ code: n.code, name: nameOf(key), from: vals(o.locs), to: vals(n.locs) });
+    });
+    oldL.forEach(function (o, key) {
+      if (!newL.has(key)) res.removed.push({ code: o.code, name: nameOf(key), locs: vals(o.locs) });
+    });
+    function frameMap(d) {
+      var m = new Map();
+      (d.frames || []).forEach(function (f) { if (f && norm(f.name) && !m.has(norm(f.name))) m.set(norm(f.name), String(f.name).trim()); });
+      return m;
+    }
+    var oldF = frameMap(oldD), newF = frameMap(newD);
+    newF.forEach(function (nm, k) { if (!oldF.has(k)) res.framesAdded.push(nm); });
+    oldF.forEach(function (nm, k) { if (!newF.has(k)) res.framesRemoved.push(nm); });
+    function byCode(a, b) { return a.code < b.code ? -1 : a.code > b.code ? 1 : 0; }
+    res.added.sort(byCode); res.removed.sort(byCode); res.moved.sort(byCode);
+    return res;
   }
 
   // ===========================================================================
@@ -838,13 +972,23 @@ h1, h2 { margin: 0; }
     el.textContent = '';
     if (!cur) { el.className = 'status warn'; el.textContent = 'กำลังโหลดข้อมูล ...'; return; }
     var good = cur.src === 'supabase' || cur.src === 'site';
-    el.className = 'status ' + (good && !loading ? 'ok' : 'warn');
+    var wasOpen = el.classList.contains('open'); // จำสถานะขยายไว้ ไม่ให้หุบเองตอน render ใหม่
     var t = SRC_TEXT[cur.src] + (cur.label ? ' ' + cur.label : '') +
       (cur.when ? ' · ' + cur.whenLabel + ' ' + fmtThai(cur.when) : '') + ' · ' + fmtNum(LOCS.length) + ' รายการ';
-    el.appendChild(h('div', null, [t]));
     var notes = (cur.notes || []).slice();
     if (loading) notes.push('กำลังตรวจหาข้อมูลล่าสุด ...');
     if (!LOCS.length) notes.push('ยังไม่มีตำแหน่งสินค้า (ชีต "รวม" ในไฟล์ยังว่าง) ผังแสดงได้ แต่ค้นหาตำแหน่งยังไม่ได้');
+    var more = notes.length > 0;
+    el.className = 'status ' + (good && !loading ? 'ok' : 'warn') + (more ? ' has-more' : '') + (more && wasOpen ? ' open' : '');
+    if (more) {
+      // บรรทัดแรกเป็นปุ่มแตะเพื่อย่อ/ขยายหมายเหตุ (ปุ่มจริง กด Enter/Space ได้เอง)
+      el.appendChild(h('button', { class: 'tog', type: 'button', 'aria-expanded': (wasOpen ? 'true' : 'false') }, [
+        h('span', { class: 'txt' }, [t]),
+        h('span', { class: 'more' }, ['แตะดูรายละเอียด'])
+      ]));
+    } else {
+      el.appendChild(h('div', null, [t]));
+    }
     notes.forEach(function (n) { el.appendChild(h('div', { class: 'l2' }, [n])); });
   }
 
@@ -918,7 +1062,7 @@ h1, h2 { margin: 0; }
         : h('div', { class: 'frame sign', 'data-id': f.id });
       var fc = f.color || (f.store ? MAP_BLUE : 'FFFFFF');          // ป้ายไม่ระบุสี = พื้นขาว ไม่มีขอบ
       el.style.background = '#' + fc;
-      el.style.color = relLum(fc) >= 0.3 ? '#000000' : '#ffffff';
+      el.style.color = relLum(fc) >= 0.179 ? '#000000' : '#ffffff';   // 0.179 = จุดที่ดำ/ขาวตัดกับพื้นเท่ากัน → เลือกตัวที่อ่านง่ายกว่าเสมอ
       if (fc !== 'FFFFFF') el.style.border = '2px solid ' + shade(fc, 0.55);
       el.appendChild(h('div', { class: 'lbl' }, [h('span', null, [f.name])]));
       if (f.store) el.addEventListener('click', function () { openSheet(f.key); });
@@ -973,8 +1117,13 @@ h1, h2 { margin: 0; }
     applyScale();
     sc.scrollLeft = mid * BOUNDS.w * U - sc.clientWidth / 2;
   }
-  function fitU() { return Math.max(U_MIN, Math.min(U_MAX, $('mapScroll').clientWidth / BOUNDS.w)); }
-  function initialU() { return Math.max(8, Math.min(11, fitU())); }   // เริ่มต้นให้อ่านออก (มือถือเลื่อนซ้าย-ขวาได้)
+  function fitU() {
+    var w = $('mapScroll').clientWidth;
+    if (!w || !BOUNDS.w) return 8;   // ผังยังไม่แสดง (กว้าง 0) → ใช้ค่ากลางไปก่อน
+    return Math.max(U_MIN, Math.min(U_MAX, w / BOUNDS.w));
+  }
+  function initialU() { return fitU(); }   // เริ่มต้นพอดีความกว้างจอ (ไม่ต้องเลื่อนซ้าย-ขวา เลื่อนลงดูต่อ)
+  var fitMode = true;   // true = ผังพอดีจอ → หมุนจอ/ย่อขยายหน้าต่างแล้วปรับให้พอดีใหม่ · กด +/− แล้วเป็น false
 
   function updateCounts() {
     FRAMES.forEach(function (f) {
@@ -1029,6 +1178,14 @@ h1, h2 { margin: 0; }
     return found.map(function (x) { return x.it; });
   }
 
+  // ไอคอนหมุดตำแหน่ง (SVG แทนอีโมจิ)
+  function pinIcon() {
+    var w = document.createElement('span');
+    w.style.display = 'inline-flex';
+    w.innerHTML = '<svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
+    return w;
+  }
+
   function renderResults() {
     var box = $('results');
     box.textContent = '';
@@ -1057,7 +1214,7 @@ h1, h2 { margin: 0; }
         locs.forEach(function (l) {
           var found = !!framesByKey[l.frame];
           var btn = h('button', { class: 'loc' + (found ? '' : ' nomap'), type: 'button', 'data-frame': l.frame }, [
-            h('span', { class: 'pin' }, ['📍 ' + l.loc + (found ? '' : ' (ไม่พบบนผัง)')]),
+            h('span', { class: 'pin' }, [pinIcon(), l.loc + (found ? '' : ' (ไม่พบบนผัง)')]),
             l.note ? h('span', { class: 'qty' }, [l.note]) : null
           ]);
           btn.addEventListener('click', function (ev) { ev.stopPropagation(); if (found) highlight([l.frame]); });
@@ -1274,6 +1431,7 @@ h1, h2 { margin: 0; }
       return r || trySite();
     }).then(function (set) {
       loading = false;
+      if (DEBUG) renderDebug();   // ให้แผง debug เห็นว่าโหลดเสร็จแล้ว
       if (!set) {
         first.notes = notes.concat(['โหลดข้อมูลสดไม่ได้ (ออฟไลน์หรือเปิดจากไฟล์ในเครื่อง) ใช้ข้อมูลที่มีอยู่แทน']);
         if (!(cur && cur.src === 'preview')) renderStatus();
@@ -1288,6 +1446,7 @@ h1, h2 { margin: 0; }
       else useData(set);
     }).catch(function (e) {
       loading = false;
+      if (DEBUG) renderDebug();
       first.notes = [(e && e.offline) || 'โหลดข้อมูลสดไม่ได้ ใช้ข้อมูลที่มีอยู่แทน'];
       dbg('boot: ' + (e && e.offline ? e.offline : e));
       if (!(cur && cur.src === 'preview')) renderStatus();
@@ -1312,6 +1471,7 @@ h1, h2 { margin: 0; }
 
   function onFile(file) {
     if (!file) return;
+    var mg = document.querySelector('details.manage'); if (mg) mg.open = true; // เปิดส่วนจัดการข้อมูลให้เห็นตัวอย่าง
     $('preview').textContent = '';
     showMsg('warn', ['กำลังอ่านไฟล์ ' + file.name + ' ...']);
     loadXLSX().then(function () {
@@ -1329,6 +1489,32 @@ h1, h2 { margin: 0; }
       if (e && e.friendly) showMsg('err', [e.friendly, 'ไม่มีการเปลี่ยนแปลงข้อมูลที่ใช้อยู่']);
       else { dbg('อ่านไฟล์ล้มเหลว: ' + e); showMsg('err', ['อ่านไฟล์ไม่สำเร็จ ตรวจว่าเป็นไฟล์ .xlsx ที่ถูกต้อง']); }
     });
+  }
+
+  // บล็อก "ส่วนที่เปลี่ยนเทียบกับข้อมูลที่ใช้อยู่" ในตัวอย่างนำเข้า (กลุ่มพับไว้ก่อน)
+  function renderChanges(newD) {
+    var wrap = h('div', { class: 'chgwrap' });
+    wrap.appendChild(h('div', { class: 'chgtitle' }, ['ส่วนที่เปลี่ยนเทียบกับข้อมูลที่ใช้อยู่']));
+    if (!base || !base.data) { wrap.appendChild(h('div', { class: 'chgline' }, ['ไม่มีข้อมูลเดิมให้เทียบ'])); return wrap; }
+    var df = diffData(base.data, newD);
+    wrap.appendChild(h('div', { class: 'chgline' }, ['เทียบกับ: ' + (base.label || SRC_TEXT[base.src] || 'ข้อมูลเดิม')]));
+    var sum = 'เพิ่ม ' + fmtNum(df.added.length) + ' · ย้ายที่ ' + fmtNum(df.moved.length) + ' · หายไป ' + fmtNum(df.removed.length);
+    if (df.framesAdded.length || df.framesRemoved.length) sum += ' · กรอบบนผังเพิ่ม ' + df.framesAdded.length + ' · ลบ ' + df.framesRemoved.length;
+    wrap.appendChild(h('div', { class: 'chgline' }, [sum]));
+    if (!df.added.length && !df.moved.length && !df.removed.length) wrap.appendChild(h('div', { class: 'chgline' }, ['ไม่มีสินค้าเปลี่ยนตำแหน่ง']));
+    var MAXROWS = 300;
+    function group(cls, title, rows, fmt) {
+      if (!rows.length) return;
+      var ul = h('ul');
+      rows.slice(0, MAXROWS).forEach(function (r) { ul.appendChild(h('li', null, [fmt(r)])); });
+      if (rows.length > MAXROWS) ul.appendChild(h('li', null, ['และอีก ' + fmtNum(rows.length - MAXROWS) + ' รายการ']));
+      wrap.appendChild(h('details', { class: 'chg ' + cls }, [h('summary', null, [title + ' ' + fmtNum(rows.length) + ' รายการ']), ul]));
+    }
+    function head(r) { return r.code + (r.name ? ' · ' + r.name : ''); }
+    group('add', 'เพิ่ม', df.added, function (r) { return head(r) + ' — ' + r.locs.join(', '); });
+    group('mov', 'ย้ายที่', df.moved, function (r) { return head(r) + ' — ' + r.from.join(', ') + ' → ' + r.to.join(', '); });
+    group('del', 'หายไป', df.removed, function (r) { return head(r) + ' — ' + r.locs.join(', '); });
+    return wrap;
   }
 
   function renderPreview(set) {
@@ -1350,6 +1536,7 @@ h1, h2 { margin: 0; }
     var inner = h('div', { class: 'box ' + kind }, lines.map(function (t) { return h('div', null, [t]); }));
     if (warns.length) { var ul = h('ul'); warns.forEach(function (t) { ul.appendChild(h('li', null, [t])); }); inner.appendChild(ul); }
     box.appendChild(inner);
+    box.appendChild(renderChanges(d));
     var bar = h('div', { class: 'pvbar' });
     if (CAN_UPLOAD) bar.appendChild(h('button', { class: 'btn primary', type: 'button', id: 'btnSave', onclick: saveToServer }, ['บันทึกขึ้นระบบ']));
     else bar.appendChild(h('div', { class: 'hint' }, [SB_ON ? 'ยังไม่ได้ตั้งอีเมลผู้ใช้กลาง (UPLOAD_EMAIL) จึงบันทึกขึ้นระบบไม่ได้' : 'ยังไม่ได้ตั้งค่าระบบออนไลน์ จึงบันทึกขึ้นระบบไม่ได้ (ดูตัวอย่างได้อย่างเดียว) — ดูวิธีตั้งค่าใน SETUP.md']));
@@ -1457,9 +1644,14 @@ h1, h2 { margin: 0; }
   }
 
   // ===== เริ่มทำงาน =====
-  $('zoomIn').addEventListener('click', function () { setScale(U * 1.25); });
-  $('zoomOut').addEventListener('click', function () { setScale(U / 1.25); });
-  $('zoomFit').addEventListener('click', function () { setScale(fitU()); });
+  $('zoomIn').addEventListener('click', function () { fitMode = false; setScale(U * 1.25); });
+  $('zoomOut').addEventListener('click', function () { fitMode = false; setScale(U / 1.25); });
+  $('zoomFit').addEventListener('click', function () { fitMode = true; setScale(fitU()); });
+  var fitTimer = null;
+  window.addEventListener('resize', function () {   // หมุนจอ/เปลี่ยนขนาดหน้าต่าง → ถ้ายังไม่ได้ซูมเอง ให้พอดีจอใหม่
+    clearTimeout(fitTimer);
+    fitTimer = setTimeout(function () { if (started && fitMode && Math.abs(fitU() - U) > 0.05) setScale(fitU()); }, 150);
+  });
 
   var timer = null;
   $('q').addEventListener('input', function () {
@@ -1472,6 +1664,14 @@ h1, h2 { margin: 0; }
     clearHighlight();
     renderResults();
     $('q').focus();
+  });
+  // แตะบรรทัดสถานะเพื่อย่อ/ขยายหมายเหตุ
+  $('status').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('.tog') : null;
+    if (!b) return;
+    var st = $('status');
+    st.classList.toggle('open');
+    b.setAttribute('aria-expanded', st.classList.contains('open') ? 'true' : 'false');
   });
   $('drop').addEventListener('click', function () { $('file').click(); });
   $('file').addEventListener('change', function (ev) {
@@ -1496,6 +1696,12 @@ h1, h2 { margin: 0; }
   $('pwOk').addEventListener('click', submitPw);
   $('pwInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') submitPw(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
+  // แผ่นเปิดอยู่แต่โฟกัสไปโดนของข้างหลัง (เช่นกด Tab) → ดึงกลับมาที่แผ่น
+  document.addEventListener('focusin', function (e) {
+    if (!openSheetEl || !openSheetEl.classList.contains('open') || openSheetEl.contains(e.target)) return;
+    var t = openSheetEl.querySelector('input, .ft button');
+    if (t) t.focus();
+  });
 
   if (DEBUG) window.layoutFinderDebug = { parse: function (buf) { return parseBuffer(buf); }, analyze: analyze, state: function () { return { cur: cur, loading: loading }; } };
   boot();
