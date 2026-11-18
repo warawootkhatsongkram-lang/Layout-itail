@@ -22,17 +22,27 @@ build_layout.py - สร้าง LAY_OUT_02.xlsx (ผังคลังสิ�
 อินพุต : layout_config.csv  + ชีต "สินค้า" จาก LAY_OUT_01.xlsx (อ่านอย่างเดียว ไม่แก้ไฟล์ต้นฉบับ)
 เอาต์พุต: LAY_OUT_02.xlsx  = ชีต "ผังคลัง" + ใบจด 1 ชีตต่อ 1 กรอบ + ชีต "สินค้า"
 
-คอลัมน์ใน layout_config.csv:
+คอลัมน์ใน layout_config.csv (ตำแหน่ง/ขนาดเป็น "ช่องกริด" 1 ช่อง = 6pt เป็นสี่เหลี่ยมจัตุรัส):
     ลำดับ      ลำดับของชีตใบจด (เรียงตามลำดับในไฟล์)
-    ชื่อในผัง   ข้อความที่แสดงในกรอบ
+    ชื่อในผัง   ข้อความที่แสดงในกรอบ (แถวตกแต่งใช้เป็นคำอธิบายในไฟล์เท่านั้น ไม่แสดงบนผัง)
     ชื่อชีต     ชื่อแท็บของใบจด (<=31 ตัวอักษร, ไม่ซ้ำ) ถ้าเว้นว่างและทำชีต=Y สคริปต์ตั้งให้อัตโนมัติ
-    ประเภท     ชั้นวาง / ตัวอักษร / สินค้า / ป้าย  (กำหนดสีเริ่มต้น)
-    ทำชีต       Y = สร้างใบจด + ลิงก์ในผัง / N = เป็นป้ายเฉยๆ
-    แถว        แถวบนชีตผัง เช่น 12  (ถ้าต้อง merge หลายแถวเขียน 58~60)
-    คอลัมน์    B=ผนังซ้าย D=กลาง F=ผนังขวา  (ถ้าต้อง merge หลายคอลัมน์เขียน B:F)
-    สีพื้น      hex 6 หลัก เช่น FFC000 (เว้นว่าง = ใช้สีตามประเภท)
+    ประเภท     กรอบ: ชั้นวาง / ตัวอักษร / สินค้า / ป้าย  |  ตกแต่ง: ผนัง / วงเล็บ / ลูกศรขึ้น / ลูกศรลง / แถบ
+    ทำชีต       Y = สร้างใบจด + ลิงก์ในผัง / N = เป็นป้ายเฉยๆ (แถวตกแต่งใส่ N)
+    X, Y       มุมซ้ายบนของรูป เริ่มนับ 1 (X=1 คือคอลัมน์ A, Y=1 คือแถวแรกของกริดใต้หัวเรื่อง)
+    กว้าง, สูง   ขนาดเป็นจำนวนช่อง  (กรอบ = merge ช่วง X..X+กว้าง-1, Y..Y+สูง-1)
+    สีพื้น      hex 6 หลัก (กรอบเก็บของว่าง = น้ำเงิน 4472C4 / ป้ายว่าง = พื้นขาวไม่มีขอบ / ตัวอักษรขาวบนสีเข้ม ดำบนสีอ่อน)
 
-เปลี่ยนเลย์เอาต์ = แก้แถว/คอลัมน์ใน CSV แล้วรันใหม่ ไม่ต้องแตะโค้ด
+วิธีวาดแถวตกแต่ง (ใช้ตำแหน่ง X,Y,กว้าง,สูง เหมือนกรอบ):
+    ผนัง      เส้นหนาสีแดง: กว้าง=1 -> เส้นตั้งตามขอบซ้ายของคอลัมน์ X ยาว สูง ช่อง
+                            สูง=1 -> เส้นนอนตามขอบบนของแถว Y ยาว กว้าง ช่อง
+    วงเล็บ    ปีกกาเส้นบางสีแดง ทิศตามคำในชื่อ: หันซ้าย/หันขวา (ปลายแหลมชี้ซ้าย/ขวา, ตั้ง) หรือ หันขึ้น/หันลง (นอน)
+              กว้างควรเป็นเลขคู่ (ตั้ง) / กว้างเป็นเลขคู่และสูงตามต้องการ (นอน)
+    ลูกศรขึ้น/ลง  ก้านพื้นแดง + หัว ▲/▼ สีแดง (หัวสูง 3 แถว)
+    แถบ       เซลล์พื้นสี (ใช้สีพื้น) มีขอบบาง
+    กรอบใหญ่ที่มีกรอบเล็กอยู่ข้างใน (เช่น office ครอบ ชั้นวางหมึก) ทำได้: ข้อความอยู่ในส่วนบนที่ไม่มีกรอบเล็ก
+    กรอบอื่นห้ามทับกัน (ชนกัน = error)
+
+เปลี่ยนเลย์เอาต์ = แก้ X/Y/กว้าง/สูง ใน CSV แล้วรันใหม่ ไม่ต้องแตะโค้ด
 """
 import argparse
 import csv
@@ -44,11 +54,12 @@ from datetime import datetime
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.utils import get_column_letter, column_index_from_string
+from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.hyperlink import Hyperlink
 from openpyxl.worksheet.properties import PageSetupProperties
 from openpyxl.worksheet.page import PageMargins
+from openpyxl.worksheet.pagebreak import Break
 
 # ---------- ตำแหน่งไฟล์ (อิงจาก root โปรเจค = โฟลเดอร์แม่ของ tools/) ----------
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -64,14 +75,13 @@ PRODUCT_NAME = "สินค้า"   # ชื่อชีตสินค้า 
 
 # ---------- ค่าคงที่หน้าตา ----------
 FONT_NAME = "Tahoma"      # ฟอนต์เดียวทั้งไฟล์
-FRAME_COLS = ("B", "D", "F")   # คอลัมน์กรอบ (ผนังซ้าย / กลาง / ผนังขวา)
-AISLE_COLS = ("C", "E")        # คอลัมน์ทางเดิน (แคบ)
-FRAME_W, AISLE_W, ROW_H = 24, 4, 28
-GRID_TOP = 4                   # แถวแรกของกรอบ
-COL_LABELS = {"B": "ผนังซ้าย", "D": "กลาง", "F": "ผนังขวา"}
+CELL_PT = 6                    # 1 ช่องกริดของผัง = 6pt (สี่เหลี่ยมจัตุรัส)
+COL_W = 1.09                   # ความกว้างคอลัมน์ผัง (Excel = 8px = 6pt)
+HEAD_ROWS = 3                  # แถวหัวเรื่องเหนือกริด (แถว Y=1 ของ CSV = แถวที่ HEAD_ROWS+1 ในชีต)
+LEG_X, LEG_W = 69, 18          # คอลัมน์เริ่ม/ความกว้างของ legend (ขวาของผนังขวา)
+MAP_BLUE = "4472C4"            # พื้นกรอบเก็บของ (น้ำเงินตามผังเดิม)
 
-# สีเริ่มต้นตามประเภท (พื้นกรอบ / สีแท็บใบจดที่เข้มขึ้นเล็กน้อย)
-TYPE_FILL = {"ชั้นวาง": "DDEBF7", "ตัวอักษร": "EDEDED", "สินค้า": "FFF2CC", "ป้าย": "FFFFFF"}
+# สีแท็บของใบจดตามประเภท
 TYPE_TAB = {"ชั้นวาง": "9DC3E6", "ตัวอักษร": "BFBFBF", "สินค้า": "FFD966", "ป้าย": "808080"}
 LINK_COLOR = "1F3864"          # น้ำเงินเข้มสำหรับลิงก์
 
@@ -106,50 +116,61 @@ def sanitize_sheet_name(name, suffix=""):
 
 
 # ---------- อ่าน CSV ----------
-def parse_span(text, is_col):
-    """'12' -> (12,12) | '58~60' -> (58,60) | 'B' -> (2,2) | 'B:F' -> (2,6)"""
-    t = text.strip().upper() if is_col else text.strip()
-    if is_col:
-        parts = t.split(":")
-        a = column_index_from_string(parts[0])
-        b = column_index_from_string(parts[-1])
-    else:
-        parts = t.split("~")
-        a, b = int(parts[0]), int(parts[-1])
-    if b < a:
-        a, b = b, a
-    return a, b
+FRAME_TYPES = ("ชั้นวาง", "ตัวอักษร", "สินค้า", "ป้าย")             # กรอบ/ป้ายที่เป็นข้อความ
+DECOR_TYPES = ("ผนัง", "วงเล็บ", "ลูกศรขึ้น", "ลูกศรลง", "แถบ")      # ตกแต่ง (ไม่มีข้อความ ไม่มีใบจด)
+REQUIRED_COLS = ("ลำดับ", "ชื่อในผัง", "ชื่อชีต", "ประเภท", "ทำชีต", "X", "Y", "กว้าง", "สูง", "สีพื้น")
 
 
 def read_config():
     items = []
     with open(CONFIG_CSV, encoding="utf-8-sig", newline="") as f:
-        for n, r in enumerate(csv.DictReader(f), start=2):
+        rd = csv.DictReader(f)
+        miss = [k for k in REQUIRED_COLS if k not in (rd.fieldnames or [])]
+        if miss:
+            raise SystemExit(f"CSV ขาดคอลัมน์ {', '.join(miss)} (schema ใหม่: {','.join(REQUIRED_COLS)})")
+        for n, r in enumerate(rd, start=2):
             name = (r.get("ชื่อในผัง") or "").strip()
             if not name:
                 continue  # ข้ามบรรทัดว่าง
-            try:
-                r1, r2 = parse_span(r["แถว"], False)
-                c1, c2 = parse_span(r["คอลัมน์"], True)
-            except Exception:
-                raise SystemExit(f"CSV บรรทัด {n}: แถว/คอลัมน์ อ่านไม่ได้ ({name})")
             typ = (r.get("ประเภท") or "").strip()
-            if typ not in TYPE_FILL:
-                raise SystemExit(f"CSV บรรทัด {n}: ประเภท '{typ}' ไม่รู้จัก (ใช้ ชั้นวาง/ตัวอักษร/สินค้า/ป้าย)")
+            if typ not in FRAME_TYPES + DECOR_TYPES:
+                raise SystemExit(f"CSV บรรทัด {n}: ประเภท '{typ}' ไม่รู้จัก "
+                                 f"(ใช้ {'/'.join(FRAME_TYPES + DECOR_TYPES)})")
+            try:
+                x, y, w, h = (int(float(r[k])) for k in ("X", "Y", "กว้าง", "สูง"))
+            except Exception:
+                raise SystemExit(f"CSV บรรทัด {n}: X/Y/กว้าง/สูง ต้องเป็นตัวเลข ({name})")
+            if min(x, y, w, h) < 1:
+                raise SystemExit(f"CSV บรรทัด {n}: X/Y/กว้าง/สูง ต้อง >= 1 ({name})")
             color = (r.get("สีพื้น") or "").strip().lstrip("#").upper()
             if color and not re.fullmatch(r"[0-9A-F]{6}", color):
                 raise SystemExit(f"CSV บรรทัด {n}: สีพื้น '{color}' ต้องเป็น hex 6 หลัก")
+            decor = typ in DECOR_TYPES
             items.append({
                 "seq": int(r.get("ลำดับ") or 0) or n,
                 "name": re.sub(r"\s+", " ", name),
                 "sheet": (r.get("ชื่อชีต") or "").strip(),
                 "type": typ,
-                "make": (r.get("ทำชีต") or "").strip().upper() == "Y",
-                "r1": r1, "r2": r2, "c1": c1, "c2": c2,
+                "decor": decor,
+                "make": (not decor) and (r.get("ทำชีต") or "").strip().upper() == "Y",
+                "x": x, "y": y, "w": w, "h": h,
                 "color": color,
             })
     items.sort(key=lambda x: x["seq"])  # เรียงตามลำดับ (sort คงลำดับเดิมถ้าเลขซ้ำ)
     return items
+
+
+def rect_of(it):
+    return (it["x"], it["y"], it["x"] + it["w"] - 1, it["y"] + it["h"] - 1)
+
+
+def rect_hit(a, b):
+    return not (a[2] < b[0] or b[2] < a[0] or a[3] < b[1] or b[3] < a[1])
+
+
+def rect_in(a, b):
+    """a อยู่ในรูป b ทั้งก้อน"""
+    return a[0] >= b[0] and a[1] >= b[1] and a[2] <= b[2] and a[3] <= b[3]
 
 
 def validate(items):
@@ -166,17 +187,30 @@ def validate(items):
         if s.lower() in seen_sheet:
             raise SystemExit(f"ชื่อชีต '{s}' ซ้ำ (หรือชนกับชีต ผังคลัง/สินค้า)")
         seen_sheet.add(s.lower())
-    used = {}
-    for it in items:
-        for r in range(it["r1"], it["r2"] + 1):
-            for c in range(it["c1"], it["c2"] + 1):
-                if (r, c) in used:
-                    raise SystemExit(
-                        f"ตำแหน่งซ้ำ {get_column_letter(c)}{r}: '{it['name']}' ชนกับ '{used[(r, c)]}'")
-                used[(r, c)] = it["name"]
-        if it["r1"] < GRID_TOP or get_column_letter(it["c1"]) not in FRAME_COLS \
-                or get_column_letter(it["c2"]) not in FRAME_COLS:
-            raise SystemExit(f"'{it['name']}' อยู่นอกกริด (แถวต้อง >= {GRID_TOP}, คอลัมน์ต้องเป็น {'/'.join(FRAME_COLS)})")
+    frames = [it for it in items if not it["decor"]]
+    # กรอบชนกรอบ: ห้ามทับกัน ยกเว้นกรอบใหญ่ (เช่น office) ที่ครอบกรอบเล็กไว้ทั้งก้อน
+    for it in frames:
+        it["mrows"] = (it["y"], it["y"] + it["h"] - 1)       # แถวที่ merge (ค่าปกติ = ทั้งกรอบ)
+    for i, a in enumerate(frames):
+        for b in frames[i + 1:]:
+            ra, rb = rect_of(a), rect_of(b)
+            if not rect_hit(ra, rb):
+                continue
+            if rect_in(rb, ra):
+                big, small = a, b
+            elif rect_in(ra, rb):
+                big, small = b, a
+            else:
+                raise SystemExit(f"ตำแหน่งซ้ำ: '{a['name']}' ชนกับ '{b['name']}'")
+            if small["y"] <= big["y"]:
+                raise SystemExit(f"'{small['name']}' ซ้อนใน '{big['name']}' ต้องอยู่ต่ำกว่าแถวบนสุดของกรอบใหญ่")
+            big["mrows"] = (big["y"], min(big["mrows"][1], small["y"] - 1))  # merge เฉพาะส่วนบนที่ไม่มีกรอบเล็ก
+    # ลูกศร/แถบ เป็นเซลล์พื้นสี: ห้ามทับกรอบ (เส้นผนัง/วงเล็บ เป็นแค่เส้นขอบ จึงไม่ตรวจ)
+    for d in items:
+        if d["type"] in ("ลูกศรขึ้น", "ลูกศรลง", "แถบ"):
+            for fr in frames:
+                if rect_hit(rect_of(d), rect_of(fr)):
+                    raise SystemExit(f"'{d['name']}' ({d['type']}) ทับกรอบ '{fr['name']}'")
 
 
 # ---------- สร้างชีตผัง ----------
@@ -186,82 +220,249 @@ def link(cell, sheet, ref="A1", color=LINK_COLOR):
     cell.hyperlink = Hyperlink(ref=cell.coordinate, location=loc, display=str(cell.value))
 
 
+def rel_lum(hex6):
+    """ความสว่างสัมพัทธ์ (WCAG) ของสี hex"""
+    def ch(v):
+        v /= 255.0
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    r, g, b = (int(hex6[i:i + 2], 16) for i in (0, 2, 4))
+    return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b)
+
+
+def shade(hex6, k=0.55):
+    """สีเข้มขึ้น (ใช้เป็นสีขอบกรอบ)"""
+    return "".join(f"{int(int(hex6[i:i + 2], 16) * k):02X}" for i in (0, 2, 4))
+
+
+def text_width(text, size):
+    """ประมาณความกว้างข้อความ (pt) ของ Tahoma ตัวหนา: สระ/วรรณยุกต์ไทยบน-ล่างไม่กินที่"""
+    em = 0.0
+    for ch in text:
+        o = ord(ch)
+        if o == 0x0E31 or 0x0E34 <= o <= 0x0E3A or 0x0E47 <= o <= 0x0E4E:
+            continue
+        if ch == " ":
+            em += 0.3
+        elif 0x0E00 <= o <= 0x0E7F:
+            em += 0.56
+        elif ch.isdigit():
+            em += 0.70                      # เผื่อฟอนต์สำรองที่กว้างกว่า Tahoma
+        elif ch.isupper():
+            em += 0.78
+        elif ch.isalpha():
+            em += 0.64
+        else:
+            em += 0.5
+    return em * size
+
+
+def fit_font(text, w_pt, h_pt, smax=9.0, smin=6.5):
+    """เลือกขนาดตัวอักษรใหญ่สุด (<=smax) ที่ข้อความแนวนอน wrap แล้วพอดีกรอบ"""
+    inner = max(w_pt - 5, 6)
+    size = smax
+    while size >= smin:
+        lines, cur = 0, 0.0
+        sp = text_width(" ", size)
+        for word in text.split(" "):
+            ww = text_width(word, size)
+            if ww > inner:                       # คำยาวกว่ากรอบ: ตัดกลางคำ
+                lines += int(ww // inner) + (1 if cur == 0 else 0)
+                cur = ww % inner
+            elif cur == 0:
+                lines, cur = max(lines, 1), ww
+            elif cur + sp + ww <= inner:
+                cur += sp + ww
+            else:
+                lines, cur = lines + 1, ww
+        if lines * size * 1.3 <= h_pt - 1:
+            return size
+        size -= 0.5
+    return smin
+
+
 def build_map(ws, items):
+    """วาดผังตามพิกัดช่องกริด (1 ช่อง = CELL_PT pt): กรอบ merge + ตกแต่ง (ผนัง/วงเล็บ/ลูกศร/แถบ)"""
     ws.sheet_view.showGridLines = False
     ws.sheet_properties.tabColor = "404040"
-    ws.column_dimensions["A"].width = 2
-    for c in FRAME_COLS:
-        ws.column_dimensions[c].width = FRAME_W
-    for c in AISLE_COLS:
-        ws.column_dimensions[c].width = AISLE_W
-    ws.column_dimensions["G"].width = 3
-    ws.column_dimensions["H"].width = 30
 
-    # หัวเรื่อง + คำแนะนำ + ชื่อคอลัมน์ผนัง
-    ws["B1"] = "ผังคลังสินค้า"
-    ws["B1"].font = font(size=18, bold=True)
-    ws["B2"] = "กดที่ชื่อกรอบเพื่อไปยังใบจดของชั้นนั้น"
-    ws["B2"].font = font(size=10, italic=True, color="595959")
-    ws.row_dimensions[1].height = 30
-    ws.row_dimensions[2].height = 18
-    for c, t in COL_LABELS.items():
-        ws[f"{c}3"] = t
-        ws[f"{c}3"].font = font(bold=True, color="595959")
-        ws[f"{c}3"].alignment = Alignment(horizontal="center")
+    def sr(y):            # แถว Y ของ CSV -> แถวจริงในชีต
+        return y + HEAD_ROWS
+    max_y = max(it["y"] + it["h"] - 1 for it in items)
+    last_col = max(LEG_X + LEG_W - 1, max(it["x"] + it["w"] for it in items))
+    for c in range(1, last_col + 1):
+        ws.column_dimensions[get_column_letter(c)].width = COL_W
+    ws.row_dimensions[1].height = 28
+    ws.row_dimensions[2].height = 16
+    ws.row_dimensions[3].height = 6
+    for y in range(1, max_y + 2):
+        ws.row_dimensions[sr(y)].height = CELL_PT
 
-    # วางกรอบตามแถว/คอลัมน์ใน CSV
-    max_row = GRID_TOP
+    # หัวเรื่อง + คำแนะนำ (ข้อความล้นไปทางขวาตามเซลล์ว่าง)
+    ws["A1"] = "ผังคลังสินค้า"
+    ws["A1"].font = font(size=18, bold=True)
+    ws["A1"].alignment = Alignment(vertical="center")
+    ws["A2"] = "กดที่ชื่อกรอบเพื่อไปยังใบจดของชั้นนั้น"
+    ws["A2"].font = font(size=10, italic=True, color="595959")
+    ws["A2"].alignment = Alignment(vertical="center")
+
+    # ---- เส้นขอบ: เก็บเป็น "ขอบ" ระหว่างเซลล์ ลำดับความสำคัญสูงชนะ (กรอบ < วงเล็บ < ผนัง < แถบ)
+    eh, ev = {}, {}     # eh[(แถว,คอลัมน์)] = ขอบบนของเซลล์ | ev[(แถว,คอลัมน์)] = ขอบซ้ายของเซลล์
+
+    def put(d, key, side, prio):
+        if key not in d or prio >= d[key][0]:
+            d[key] = (prio, side)
+
+    def box_edges(x, y, w, h, side, prio):
+        for c in range(x, x + w):
+            put(eh, (sr(y), c), side, prio)
+            put(eh, (sr(y + h), c), side, prio)
+        for r in range(y, y + h):
+            put(ev, (sr(r), x), side, prio)
+            put(ev, (sr(r), x + w), side, prio)
+
+    def style_fill(x, y, w, h, hex6):
+        for r in range(y, y + h):
+            for c in range(x, x + w):
+                ws.cell(row=sr(r), column=c).fill = fill(hex6)
+
+    def merge(x, y, w, h):
+        if w > 1 or h > 1:
+            ws.merge_cells(start_row=sr(y), start_column=x, end_row=sr(y + h - 1), end_column=x + w - 1)
+
     cells = {}
+    P_FRAME, P_BRACE, P_WALL, P_BAR = 1, 2, 3, 4
     for it in items:
-        c1, c2, r1, r2 = it["c1"], it["c2"], it["r1"], it["r2"]
-        fc = it["color"] or TYPE_FILL[it["type"]]
-        for r in range(r1, r2 + 1):
-            for c in range(c1, c2 + 1):
-                cl = ws.cell(row=r, column=c)
-                cl.fill = fill(fc)
-                cl.border = Border(left=MED if c == c1 else None, right=MED if c == c2 else None,
-                                   top=MED if r == r1 else None, bottom=MED if r == r2 else None)
-        if (r1, c1) != (r2, c2):
-            ws.merge_cells(start_row=r1, start_column=c1, end_row=r2, end_column=c2)
-        cell = ws.cell(row=r1, column=c1, value=it["name"])
-        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        if it["make"]:
-            cell.font = font(underline="single", color=LINK_COLOR)
-            link(cell, it["sheet"])
-            cells[it["sheet"]] = cell.coordinate
-        else:
-            cell.font = font(bold=True, size=11 if it["name"].lower() == "office" else 10)
-        max_row = max(max_row, r2)
-    for r in range(GRID_TOP, max_row + 1):
-        ws.row_dimensions[r].height = ROW_H
+        x, y, w, h, typ = it["x"], it["y"], it["w"], it["h"], it["type"]
+        color = it["color"]
+        if typ in FRAME_TYPES:
+            fc = color or (MAP_BLUE if it["make"] else "FFFFFF")      # ป้ายไม่ระบุสี = พื้นขาว
+            y1, y2 = it["mrows"]
+            merge(x, y1, w, y2 - y1 + 1)
+            style_fill(x, y, w, h, fc)
+            if fc != "FFFFFF":
+                box_edges(x, y, w, h, Side(style="medium", color=shade(fc)), P_FRAME)
+            cell = ws.cell(row=sr(y), column=x, value=it["name"])
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            tcol = "000000" if rel_lum(fc) >= 0.3 else "FFFFFF"
+            low = it["name"].lower()
+            if low == "office":
+                size = 40.0
+            elif it["name"].startswith("โซนรหัส") and h >= 6:
+                size = 14.0
+            else:
+                size = fit_font(it["name"], w * CELL_PT, (y2 - y1 + 1) * CELL_PT)
+            cell.font = font(bold=True, size=size, color=tcol)
+            if it["make"]:
+                link(cell, it["sheet"])
+                cells[it["sheet"]] = cell.coordinate
+        elif typ == "ผนัง":
+            side = Side(style="thick", color=color or "FF0000")
+            if w == 1:      # เส้นตั้ง ตามขอบซ้ายของคอลัมน์ X
+                for r in range(y, y + h):
+                    put(ev, (sr(r), x), side, P_WALL)
+            else:           # เส้นนอน ตามขอบบนของแถว Y
+                for c in range(x, x + w):
+                    put(eh, (sr(y), c), side, P_WALL)
+        elif typ == "วงเล็บ":
+            side = Side(style="thin", color=color or "FF0000")
+            d = it["name"]
+            if h >= w:      # วงเล็บตั้ง: ขีดเส้นกลาง (spine) + ขีดสั้นหัว/ท้าย + ปลายแหลมกลาง
+                half = w // 2
+                tip_left = "ซ้าย" in d
+                tip_cols = range(x, x + half) if tip_left else range(x + half, x + w)
+                tick_cols = range(x + half, x + w) if tip_left else range(x, x + half)
+                for r in range(y, y + h):
+                    put(ev, (sr(r), x + half), side, P_BRACE)
+                for c in tick_cols:
+                    put(eh, (sr(y), c), side, P_BRACE)
+                    put(eh, (sr(y + h), c), side, P_BRACE)
+                for c in tip_cols:
+                    put(eh, (sr(y + h // 2), c), side, P_BRACE)
+            else:           # วงเล็บนอน
+                half = h // 2
+                tip_up = "ขึ้น" in d
+                tip_rows = range(y, y + half) if tip_up else range(y + h - half, y + h)
+                tick_rows = range(y + half, y + h) if tip_up else range(y, y + h - half)
+                spine_y = y + half if tip_up else y + h - half
+                for c in range(x, x + w):
+                    put(eh, (sr(spine_y), c), side, P_BRACE)
+                for r in tick_rows:
+                    put(ev, (sr(r), x), side, P_BRACE)
+                    put(ev, (sr(r), x + w), side, P_BRACE)
+                for r in tip_rows:
+                    put(ev, (sr(r), x + w // 2), side, P_BRACE)
+        elif typ in ("ลูกศรขึ้น", "ลูกศรลง"):
+            red = color or "FF0000"
+            up = typ == "ลูกศรขึ้น"
+            hd = 3                              # หัวลูกศร = 3 แถว x กว้างเต็ม
+            hy = y if up else y + h - hd
+            sy = y + hd if up else y
+            merge(x, hy, w, hd)
+            head = ws.cell(row=sr(hy), column=x, value="▲" if up else "▼")
+            head.font = font(size=20, bold=True, color=red)
+            head.alignment = Alignment(horizontal="center", vertical="center")
+            mid = x + w // 2                    # ก้านลูกศร = คอลัมน์กลาง
+            merge(mid, sy, 1, h - hd)
+            style_fill(mid, sy, 1, h - hd, red)
+        elif typ == "แถบ":
+            bc = color or "FFC000"
+            style_fill(x, y, w, h, bc)
+            box_edges(x, y, w, h, Side(style="thin", color=shade(bc, 0.5)), P_BAR)
 
-    # legend คอลัมน์ H
-    ws["H4"] = "สีของกรอบ"
-    ws["H4"].font = font(bold=True)
-    legend = [("ชั้นวาง", "ชั้นวาง"), ("ตัวอักษร (โซนตัวอักษร)", "ตัวอักษร"),
-              ("สินค้า (กรอบชื่อสินค้า)", "สินค้า"), ("ป้าย / พื้นที่ (ไม่มีใบจด)", "ป้าย")]
-    for i, (txt, typ) in enumerate(legend):
-        c = ws.cell(row=5 + i, column=8, value=txt)
-        c.fill = fill(TYPE_FILL[typ])
-        c.border = Border(left=MED, right=MED, top=MED, bottom=MED)
-        c.font = font()
-        c.alignment = Alignment(horizontal="center", vertical="center")
-    ws["H9"] = "สีอื่น = สีตามผังเดิม"
-    ws["H10"] = "ตัวอักษรขีดเส้นใต้ = กดเพื่อไปใบจด"
-    for a in ("H9", "H10"):
-        ws[a].font = font(size=9, color="595959")
-        ws[a].alignment = Alignment(wrap_text=True, vertical="top")
+    # ---- ลงเส้นขอบจริง (หลัง merge เพื่อให้เซลล์ที่ถูก merge รับเส้นได้ครบ)
+    touched = set()
+    for (r, c) in list(eh):
+        touched.update([(r, c), (r - 1, c)])
+    for (r, c) in list(ev):
+        touched.update([(r, c), (r, c - 1)])
+    for (r, c) in touched:
+        if r < 1 or c < 1:
+            continue
+        g = lambda d, k: (d[k][1] if k in d else None)
+        ws.cell(row=r, column=c).border = Border(
+            top=g(eh, (r, c)), bottom=g(eh, (r + 1, c)), left=g(ev, (r, c)), right=g(ev, (r, c + 1)))
+
+    # ---- legend ขวาของผัง
+    def legend(row, text, fc, bold=False, tcol="000000", box=False):
+        merge(LEG_X, row, LEG_W, 3)
+        c = ws.cell(row=sr(row), column=LEG_X, value=text)
+        c.font = font(size=9, bold=bold, color=tcol)
+        c.alignment = Alignment(horizontal="center" if fc else "left", vertical="center", wrap_text=True)
+        if fc:
+            style_fill(LEG_X, row, LEG_W, 3, fc)
+            bs = Side(style="medium", color=shade(fc))
+            for rr in range(row, row + 3):
+                for cc in range(LEG_X, LEG_X + LEG_W):
+                    ws.cell(row=sr(rr), column=cc).border = Border(
+                        left=bs if cc == LEG_X else None, right=bs if cc == LEG_X + LEG_W - 1 else None,
+                        top=bs if rr == row else None, bottom=bs if rr == row + 2 else None)
+    legend(4, "คำอธิบาย", None, bold=True)
+    legend(8, "กรอบเก็บของ (กดแล้วไปใบจด)", MAP_BLUE, tcol="FFFFFF")
+    legend(12, "สีอื่น / ป้าย = ตามผังเดิม", None)
 
     # ตั้งค่าพิมพ์ A4 แนวตั้ง กว้าง 1 หน้า
-    ws.freeze_panes = f"A{GRID_TOP}"
-    ws.print_area = f"A1:H{max(max_row, 10)}"
-    ws.print_title_rows = "1:3"
+    last_row = sr(max_y + 1)
+    # ตัดหน้ากระดาษที่ช่องว่างระหว่างกรอบ (ไม่ผ่ากลางกรอบ): หน้าแรกจุ ~122 แถว หน้าถัดไป ~130 แถว
+    spans = [f["mrows"] for f in items if f["type"] in FRAME_TYPES]
+    spans += [(d["y"], d["y"] + d["h"] - 1) for d in items
+              if d["type"] in ("ลูกศรขึ้น", "ลูกศรลง", "แถบ") or (d["type"] == "วงเล็บ" and d["w"] > d["h"])]
+    safe = [r for r in range(1, max_y) if not any(a <= r < b for a, b in spans)]
+    start, cap = 0, 122
+    while max_y - start > cap:
+        cand = [r for r in safe if start + cap // 2 < r <= start + cap]
+        if not cand:
+            break
+        start = max(cand)
+        ws.row_breaks.append(Break(id=sr(start)))
+        cap = 130
+    ws.freeze_panes = f"A{HEAD_ROWS + 1}"
+    ws.print_area = f"A1:{get_column_letter(last_col)}{last_row}"
     ws.page_setup.paperSize = 9
     ws.page_setup.orientation = "portrait"
     ws.page_setup.fitToWidth = 1
     ws.page_setup.fitToHeight = 0
     ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
-    ws.page_margins = PageMargins(left=0.4, right=0.4, top=0.5, bottom=0.5)
+    ws.page_margins = PageMargins(left=0.4, right=0.4, top=0.3, bottom=0.3)
     ws.print_options.horizontalCentered = True
     return cells
 
@@ -521,7 +722,8 @@ def main():
     wb.save(out_path)
 
     print(f"สำเร็จ: {out_path}")
-    print(f"  กรอบในผัง {len(items)} (ใบจด {len(sheets)}, ป้าย {len(items) - len(sheets)}) | ชีตทั้งหมด {len(wb.sheetnames)} | แถวชีตสินค้า {n}")
+    nd = sum(1 for it in items if it["decor"])
+    print(f"  กรอบในผัง {len(items) - nd} (ใบจด {len(sheets)}, ป้าย {len(items) - nd - len(sheets)}) + ตกแต่ง {nd} | ชีตทั้งหมด {len(wb.sheetnames)} | แถวชีตสินค้า {n}")
     print(f"  สำรองไฟล์เดิม: {bak or '(ไม่มีไฟล์เดิม)'}")
     print(f"  ย้ายข้อมูลเดิมกลับ: {moved_sheets} ชีต / {moved_rows} แถว")
     if stray:
