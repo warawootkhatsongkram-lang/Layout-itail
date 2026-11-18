@@ -8,6 +8,17 @@ build_layout.py - สร้าง LAY_OUT_02.xlsx (ผังคลังสิ�
     2. python3 tools/build_layout.py
     3. ได้ไฟล์ LAY_OUT_02.xlsx ใหม่ (เขียนทับของเดิม)
 
+ความปลอดภัยของข้อมูลที่ลูกน้องกรอกไว้ (รันซ้ำได้ ข้อมูลไม่หาย):
+    - ก่อนเขียนทับ ถ้ามี LAY_OUT_02.xlsx เดิม จะสำรองไว้ที่ backup/LAY_OUT_02_ปปปปดดวว-ชชนนวว.xlsx เสมอ
+    - อ่านข้อมูลที่กรอกในใบจดเดิม (ระดับชั้น/รหัส/จำนวน/หมายเหตุ แถว 6-35 + ผู้จด/วันที่จด)
+      แล้วเติมกลับในใบจดชื่อชีตเดียวกันของไฟล์ใหม่ (คอลัมน์ รายการ/หน่วย เป็นสูตร ไม่แตะ)
+    - ใบจดที่มีข้อมูลแต่ถูกลบ/เปลี่ยนชื่อใน CSV แล้ว จะไม่ทิ้ง: รวมไว้ในชีต
+      "ข้อมูลค้าง (ชั้นที่ถูกลบ)" (ก่อนชีตสินค้า) และเตือนใน console
+    - ถ้าเปลี่ยนชื่อชั้นแล้วอยากให้ข้อมูลตามไป ให้ย้ายข้อมูลจากชีตข้อมูลค้างกลับเอง
+
+ตัวเลือกเสริม (ปกติไม่ต้องใช้ ใช้ทดสอบ):
+    python3 tools/build_layout.py --config path/to/config.csv --out path/to/out.xlsx
+
 อินพุต : layout_config.csv  + ชีต "สินค้า" จาก LAY_OUT_01.xlsx (อ่านอย่างเดียว ไม่แก้ไฟล์ต้นฉบับ)
 เอาต์พุต: LAY_OUT_02.xlsx  = ชีต "ผังคลัง" + ใบจด 1 ชีตต่อ 1 กรอบ + ชีต "สินค้า"
 
@@ -23,10 +34,13 @@ build_layout.py - สร้าง LAY_OUT_02.xlsx (ผังคลังสิ�
 
 เปลี่ยนเลย์เอาต์ = แก้แถว/คอลัมน์ใน CSV แล้วรันใหม่ ไม่ต้องแตะโค้ด
 """
+import argparse
 import csv
 import os
 import re
+import shutil
 import sys
+from datetime import datetime
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -43,6 +57,9 @@ SRC_XLSX = os.path.join(ROOT, "LAY_OUT_01.xlsx")
 OUT_XLSX = os.path.join(ROOT, "LAY_OUT_02.xlsx")
 
 MAP_NAME = "ผังคลัง"      # ชื่อชีตผัง (ชีตแรก)
+STRAY_NAME = "ข้อมูลค้าง (ชั้นที่ถูกลบ)"   # ชีตเก็บข้อมูลของใบจดที่ไม่มีใน CSV แล้ว
+DEFAULT_WHO = "ผู้จด: ______________________"      # ข้อความเริ่มต้นช่องผู้จด
+DEFAULT_WHEN = "วันที่จด: ____/____/______"         # ข้อความเริ่มต้นช่องวันที่จด
 PRODUCT_NAME = "สินค้า"   # ชื่อชีตสินค้า (ชีตสุดท้าย และชีตต้นทางใน LAY_OUT_01.xlsx)
 
 # ---------- ค่าคงที่หน้าตา ----------
@@ -137,7 +154,7 @@ def read_config():
 
 def validate(items):
     """ตรวจชื่อชีตและตำแหน่งซ้อนทับ ก่อนสร้างไฟล์"""
-    seen_sheet = {MAP_NAME.lower(), PRODUCT_NAME.lower()}
+    seen_sheet = {MAP_NAME.lower(), PRODUCT_NAME.lower(), STRAY_NAME.lower()}
     for it in items:
         if not it["make"]:
             continue
@@ -271,9 +288,9 @@ def build_sheet(ws, it, back_ref):
     ws.merge_cells("A2:G2")
     ws["A2"] = f"ประเภท: {it['type']}"
     ws.merge_cells("A3:D3")
-    ws["A3"] = "ผู้จด: ______________________"
+    ws["A3"] = DEFAULT_WHO
     ws.merge_cells("E3:G3")
-    ws["E3"] = "วันที่จด: ____/____/______"
+    ws["E3"] = DEFAULT_WHEN
     for a in ("A2", "A3", "E3"):
         ws[a].font = font(size=11)
         ws[a].alignment = Alignment(vertical="center")
@@ -371,20 +388,146 @@ def build_products(ws):
     return n
 
 
+# ---------- สำรองไฟล์เดิม + ย้ายข้อมูลที่กรอกไว้ ----------
+DATA_COLS = (2, 3, 6, 7)   # B ระดับชั้น, C รหัส, F จำนวน, G หมายเหตุ (D/E เป็นสูตร ไม่แตะ)
+
+
+def backup_existing(out_path):
+    """ถ้ามีไฟล์เดิม สำเนาไว้ที่ backup/ (ข้างไฟล์ผลลัพธ์) แล้วคืน path ของ backup"""
+    if not os.path.exists(out_path):
+        return None
+    bdir = os.path.join(os.path.dirname(os.path.abspath(out_path)), "backup")
+    os.makedirs(bdir, exist_ok=True)
+    stem = os.path.splitext(os.path.basename(out_path))[0]
+    dst = os.path.join(bdir, f"{stem}_{datetime.now():%Y%m%d-%H%M%S}.xlsx")
+    shutil.copy2(out_path, dst)
+    return dst
+
+
+def blank(v):
+    return v is None or (isinstance(v, str) and v.strip() == "")
+
+
+def read_old_data(out_path):
+    """อ่านข้อมูลที่กรอกในไฟล์เดิม -> (data, who, stray)
+    data[ชื่อชีต] = {แถว: {คอลัมน์: ค่า}} | who[ชื่อชีต] = (A3, E3) เฉพาะที่ถูกแก้จากค่าเริ่มต้น
+    stray = แถวจากชีตข้อมูลค้างรอบก่อน (เก็บต่อ ไม่ให้หาย)"""
+    data, who, stray = {}, {}, []
+    wb = load_workbook(out_path)
+    for ws in wb.worksheets:
+        if ws.title in (MAP_NAME, PRODUCT_NAME):
+            continue
+        if ws.title == STRAY_NAME:
+            for r in ws.iter_rows(min_row=2, values_only=True):
+                if any(not blank(v) for v in r[:5]):
+                    stray.append(list(r[:5]))
+            continue
+        rows = {}
+        for r in range(FIRST, LAST + 1):
+            vals = {c: ws.cell(row=r, column=c).value for c in DATA_COLS}
+            if any(not blank(v) for v in vals.values()):
+                rows[r] = vals
+        if rows:
+            data[ws.title] = rows
+        a3, e3 = ws["A3"].value, ws["E3"].value
+        if (a3 and a3 != DEFAULT_WHO) or (e3 and e3 != DEFAULT_WHEN):
+            who[ws.title] = (a3, e3)
+    wb.close()
+    return data, who, stray
+
+
+def build_stray(ws, rows):
+    """ชีตรวมข้อมูลของใบจดที่ไม่มีใน CSV ใหม่แล้ว"""
+    ws.sheet_properties.tabColor = "C00000"
+    heads = ["ชื่อชีตเดิม", "ระดับชั้น", "รหัส", "จำนวน", "หมายเหตุ"]
+    for i, h in enumerate(heads, start=1):
+        c = ws.cell(row=1, column=i, value=h)
+        c.font = font(bold=True)
+        c.fill = fill("F8CBAD")
+    for n, r in enumerate(rows, start=2):
+        for i, v in enumerate(r, start=1):
+            c = ws.cell(row=n, column=i, value=v)
+            c.font = font()
+            if i == 3:
+                c.number_format = "@"
+    for k, v in {"A": 30, "B": 12, "C": 20, "D": 10, "E": 40}.items():
+        ws.column_dimensions[k].width = v
+    ws.freeze_panes = "A2"
+
+
 def main():
+    global CONFIG_CSV
+    ap = argparse.ArgumentParser(description="สร้าง LAY_OUT_02.xlsx จาก layout_config.csv")
+    ap.add_argument("--config", default=CONFIG_CSV, help="ไฟล์ config CSV (ค่าเริ่มต้น layout_config.csv)")
+    ap.add_argument("--out", default=OUT_XLSX, help="ไฟล์ผลลัพธ์ (ค่าเริ่มต้น LAY_OUT_02.xlsx)")
+    args = ap.parse_args()
+    CONFIG_CSV = args.config
+    out_path = args.out
+
     items = read_config()
     validate(items)
+
+    # 1) สำรองไฟล์เดิมก่อนเสมอ  2) อ่านข้อมูลที่กรอกไว้ (ถ้าอ่านไม่ได้ ไม่เขียนทับ)
+    bak = backup_existing(out_path)
+    data, who, stray = {}, {}, []
+    if bak:
+        try:
+            data, who, stray = read_old_data(out_path)
+        except Exception as e:
+            raise SystemExit(f"อ่านไฟล์เดิมไม่ได้ ({e}) - ยังไม่เขียนทับ (สำรองไว้แล้วที่ {bak})")
+
     wb = Workbook()
     ws_map = wb.active
     ws_map.title = MAP_NAME
     cells = build_map(ws_map, items)
     sheets = [it for it in items if it["make"]]
+    names = {it["sheet"] for it in sheets}
+
+    # 3) เติมข้อมูลเดิมกลับใบจดชื่อเดียวกัน (ไม่เติม D/E ที่เป็นสูตร)
+    moved_sheets = moved_rows = 0
     for it in sheets:
-        build_sheet(wb.create_sheet(it["sheet"]), it, cells[it["sheet"]])
+        ws = wb.create_sheet(it["sheet"])
+        build_sheet(ws, it, cells[it["sheet"]])
+        if it["sheet"] in data:
+            moved_sheets += 1
+            for r, vals in data[it["sheet"]].items():
+                moved_rows += 1
+                for c, v in vals.items():
+                    if not blank(v):
+                        ws.cell(row=r, column=c, value=v)
+        if it["sheet"] in who:
+            a3, e3 = who[it["sheet"]]
+            if a3:
+                ws["A3"] = a3
+            if e3:
+                ws["E3"] = e3
+
+    # 4) ใบจดเดิมที่มีข้อมูลแต่ไม่มีใน config ใหม่ -> ชีตข้อมูลค้าง
+    new_stray = 0
+    for old, rows in data.items():
+        if old in names:
+            continue
+        for r in sorted(rows):
+            v = rows[r]
+            stray.append([old, v[2], v[3], v[6], v[7]])
+            new_stray += 1
+    for old, (a3, e3) in who.items():
+        if old not in names:
+            stray.append([old, None, None, None, f"{a3 or ''} {e3 or ''}".strip()])
+            new_stray += 1
+    if stray:
+        build_stray(wb.create_sheet(STRAY_NAME), stray)
     n = build_products(wb.create_sheet(PRODUCT_NAME))
-    wb.save(OUT_XLSX)
-    print(f"สำเร็จ: {OUT_XLSX}")
+    wb.save(out_path)
+
+    print(f"สำเร็จ: {out_path}")
     print(f"  กรอบในผัง {len(items)} (ใบจด {len(sheets)}, ป้าย {len(items) - len(sheets)}) | ชีตทั้งหมด {len(wb.sheetnames)} | แถวชีตสินค้า {n}")
+    print(f"  สำรองไฟล์เดิม: {bak or '(ไม่มีไฟล์เดิม)'}")
+    print(f"  ย้ายข้อมูลเดิมกลับ: {moved_sheets} ชีต / {moved_rows} แถว")
+    if stray:
+        print(f"  !! ข้อมูลค้าง {len(stray)} แถว (ใหม่รอบนี้ {new_stray}) อยู่ในชีต \"{STRAY_NAME}\" - ตรวจและย้ายเอง")
+    else:
+        print("  ข้อมูลค้าง: 0 แถว")
 
 
 if __name__ == "__main__":
