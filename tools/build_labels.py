@@ -35,6 +35,7 @@ import os
 import re
 import shutil
 import sys
+import zipfile
 
 from openpyxl import load_workbook
 from openpyxl.formatting.rule import Rule
@@ -460,11 +461,20 @@ def has_data(rows):
 
 
 # ---------------------------------------------------------------- main
+def check_src_safe(src):
+    """openpyxl เปิด-บันทึกแล้วรูป/ชาร์ต/shape หาย -> ถ้าไฟล์ต้นทางมีให้หยุดก่อน (ไม่ทำลายงานเดย์) — เหมือน build_lookup.py"""
+    with zipfile.ZipFile(src) as z:
+        bad = [n for n in z.namelist() if n.startswith(("xl/media/", "xl/drawings/", "xl/charts/"))]
+    if bad:
+        raise SystemExit(f"ไฟล์ {src} มีรูป/ชาร์ต/shape ({bad[0]} ...) openpyxl จะทำให้หาย -> หยุดไว้ก่อน ไม่ได้เขียนอะไร")
+
+
 def process(path, force_mock):
     print("== %s" % path)
     if not os.path.exists(path):
         print("  ไม่พบไฟล์ - ข้าม")
         return False
+    check_src_safe(path)
     wb = load_workbook(path)
     if SHEET_PRODUCT not in wb.sheetnames:
         print("  ผิดพลาด: ไม่พบชีต \"สินค้า\" - ข้าม")

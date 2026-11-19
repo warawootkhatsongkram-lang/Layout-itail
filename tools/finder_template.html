@@ -249,6 +249,7 @@ h1, h2 { margin: 0; }
 .frame .lbl span { display: block; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; }
 .frame.store { cursor: pointer; }
 .frame.sign { cursor: default; }
+.frame.nf { z-index: 4; }   /* กล่องข้อความไม่มีพื้น (จาก shape): ให้ตัวหนังสืออยู่เหนือรูปทรงตกแต่งที่ซ้อนกัน */
 .frame .cnt {
   position: absolute; top: -7px; right: -6px; z-index: 4;
   min-width: 15px; padding: 0 3px;
@@ -379,7 +380,7 @@ h1, h2 { margin: 0; }
 
   <section class="map-sec" id="mapSec">
     <h2>ผังคลัง</h2>
-    <div class="sub">แตะกรอบเพื่อดูสินค้าในกรอบนั้น · ตัวเลขมุมกรอบ = จำนวนรายการ · ผังตามชีต "ผังคลัง" ในไฟล์ LAY_OUT_02.xlsx</div>
+    <div class="sub">แตะกรอบเพื่อดูสินค้าในกรอบนั้น · ตัวเลขมุมกรอบ = จำนวนรายการ · ผังตามชีต "<span id="mapSheetName">ผังคลัง</span>" ในไฟล์ LAY_OUT_02.xlsx</div>
     <div class="legend">
       <span><i style="background:#4472c4"></i>กรอบ (แตะเพื่อดูสินค้า)</span>
       <span><i class="wall"></i>ผนัง</span>
@@ -495,10 +496,12 @@ h1, h2 { margin: 0; }
   // ===========================================================================
   // ส่วนที่ 1: ตัวอ่านไฟล์ LAY_OUT_02.xlsx
   // (กติกาเดียวกับ tools/build_finder.py ทุกข้อ — แก้ที่หนึ่งต้องแก้ทั้งสองที่)
+  //   ผังให้เดย์ปรับเองได้ (ถ้ามี) : shape มีข้อความ = กรอบ, ไม่มีข้อความ = ตกแต่ง (ใช้แทน ผังคลัง)
   //   ผังคลัง : กรอบ = ช่อง merge ที่มีข้อความ, สี = สีพื้นเซลล์, ตกแต่ง = เส้นขอบหนา/บาง + ลูกศร + แถบสี
   //   รวม     : B=Location (ชื่อกรอบ) C=รหัสสินค้า E=หมายเหตุ   สินค้า: A=รหัส B=ชื่อ C=หน่วย D=Total
   // ===========================================================================
   var SHEET_MAP = 'ผังคลัง', SHEET_ALL = 'รวม', SHEET_PROD = 'สินค้า';
+  var SHEET_SHAPES = 'ผังให้เดย์ปรับเองได้';   // ผังที่วาดด้วย shape ของ Excel — ถ้ามีชีตนี้ (และมี drawing) ใช้แทน ผังคลัง
   var LEGEND_TITLE = 'คำอธิบาย';       // กล่องคำอธิบายทางขวาของผัง: ข้ามทุกอย่างตั้งแต่คอลัมน์นี้ไปทางขวา
   var HEAD_ROWS = 3;                   // แถว 1-3 เป็นหัวเรื่อง ไม่นับเป็นพิกัดผัง
   var UNIT_W_PX = 8, UNIT_H_PT = 6;    // 1 หน่วยกว้าง = 8px, 1 หน่วยสูง = 6pt
@@ -810,6 +813,263 @@ h1, h2 { margin: 0; }
     return { frames: frames, decor: decor };
   }
 
+  // ---- อ่านชีต "ผังให้เดย์ปรับเองได้" (shape ของ Excel) -> {frames, decor, info} ----
+  // (กติกาเดียวกับ read_drawing_shapes() ใน tools/build_finder.py ทุกข้อ — แก้ที่หนึ่งต้องแก้ทั้งสองที่)
+  //   หน่วยเดียวกับผังคลัง: 1 หน่วย = 8px = 76200 EMU, x/y นับจาก 1 · shape มีข้อความ = กรอบ · ไม่มีข้อความ = ตกแต่ง (แตะไม่ได้)
+  var EMU_UNIT = 76200, EMU_PX = 9525;
+  var LN_STYLE_W = [0, 9525, 25400, 38100];            // ความกว้างเส้นตาม lnRef idx 0..3 ของธีม Office
+  var SCHEME_ALIAS = { tx1: 'dk1', tx2: 'dk2', bg1: 'lt1', bg2: 'lt2' };
+  var SYS_CLR = { windowText: '000000', window: 'FFFFFF' };
+  var DECOR_GEOMS = ['rect', 'ellipse', 'downArrow', 'rightBrace'];
+  var LINE_GEOMS = ['line', 'straightConnector1'];
+
+  function kid(e, name) {
+    if (!e) return null;
+    for (var i = 0; i < e.children.length; i++) if (e.children[i].localName === name) return e.children[i];
+    return null;
+  }
+  function toLin(c) { return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }
+  function fromLin(c) { c = Math.max(0, Math.min(1, c)); return c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055; }
+  function hex2(x) { var n = Math.floor(Math.max(0, Math.min(1, x)) * 255 + 0.5); return (n < 16 ? '0' : '') + n.toString(16).toUpperCase(); }
+  // แท็กสี DrawingML (+ ตัวปรับ lumMod/lumOff/tint/shade/satMod/satOff) -> 'RRGGBB' | null ; ph = สีแทน phClr (จาก style)
+  function clrHex(el, theme, ph) {
+    if (!el) return null;
+    var n = el.localName, v = el.getAttribute('val'), base = null;
+    if (n === 'srgbClr' && v && /^[0-9A-Fa-f]{6}$/.test(v)) base = v.toUpperCase();
+    else if (n === 'schemeClr' && v) base = v === 'phClr' ? ph : theme[SCHEME_ALIAS[v] || v];
+    else if (n === 'sysClr') { var lc = el.getAttribute('lastClr'); base = lc && /^[0-9A-Fa-f]{6}$/.test(lc) ? lc.toUpperCase() : (SYS_CLR[v] || null); }
+    else if (n === 'scrgbClr') {
+      base = ['r', 'g', 'b'].map(function (k) { return hex2(Math.max(0, Math.min(100000, parseFloat(el.getAttribute(k)) || 0)) / 100000); }).join('');
+    }
+    if (!base) return null;
+    var rgb = [0, 2, 4].map(function (i) { return parseInt(base.slice(i, i + 2), 16) / 255; });
+    for (var i = 0; i < el.children.length; i++) {
+      var m = el.children[i], mn = m.localName, val = parseFloat(m.getAttribute('val')) / 100000;
+      if (isNaN(val)) continue;
+      if (mn === 'lumMod' || mn === 'lumOff' || mn === 'satMod' || mn === 'satOff') {
+        var hls = rgbToHls(rgb[0], rgb[1], rgb[2]);
+        if (mn === 'lumMod') hls[1] *= val; else if (mn === 'lumOff') hls[1] += val;
+        else if (mn === 'satMod') hls[2] *= val; else hls[2] += val;
+        rgb = hlsToRgb(hls[0], Math.max(0, Math.min(1, hls[1])), Math.max(0, Math.min(1, hls[2])));
+      } else if (mn === 'shade') rgb = rgb.map(function (c) { return fromLin(toLin(c) * val); });
+      else if (mn === 'tint') rgb = rgb.map(function (c) { return fromLin(toLin(c) * val + (1 - val)); });
+    }
+    return hex2(rgb[0]) + hex2(rgb[1]) + hex2(rgb[2]);
+  }
+  function firstClr(el, theme, ph) { return el && el.children.length ? clrHex(el.children[0], theme, ph) : null; }
+  function readXfrm(x) {
+    if (!x) return null;
+    function pair(tag, a, b) { var e = kid(x, tag); return e ? [parseFloat(e.getAttribute(a)) || 0, parseFloat(e.getAttribute(b)) || 0] : [0, 0]; }
+    return { off: pair('off', 'x', 'y'), ext: pair('ext', 'cx', 'cy'), chOff: pair('chOff', 'x', 'y'), chExt: pair('chExt', 'cx', 'cy'),
+      rot: (parseFloat(x.getAttribute('rot')) || 0) / 60000,
+      fh: x.getAttribute('flipH') === '1' || x.getAttribute('flipH') === 'true', fv: x.getAttribute('flipV') === '1' || x.getAttribute('flipV') === 'true' };
+  }
+  // เมทริกซ์ affine [a,b,c,d,e,f]: x' = a*x + c*y + e ; y' = b*x + d*y + f ; mmul(m,n) = ทำ n ก่อนแล้ว m
+  function mmul(m, n) {
+    return [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3],
+      m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+  }
+  // หมุน (องศา ตามเข็ม) + พลิก รอบจุด (cx,cy)
+  function aboutCenter(cx, cy, rot, fh, fv) {
+    var t = rot * Math.PI / 180;
+    var r = [Math.cos(t), Math.sin(t), -Math.sin(t), Math.cos(t), 0, 0], f = [fh ? -1 : 1, 0, 0, fv ? -1 : 1, 0, 0];
+    return mmul(mmul([1, 0, 0, 1, cx, cy], mmul(r, f)), [1, 0, 0, 1, -cx, -cy]);
+  }
+  function applyM(m, x, y) { return [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]; }
+  function shapeText(sp) {
+    var tb = kid(sp, 'txBody');
+    if (!tb) return '';
+    var parts = [];
+    for (var i = 0; i < tb.children.length; i++) {
+      var p = tb.children[i];
+      if (p.localName !== 'p') continue;
+      var buf = '';
+      for (var j = 0; j < p.children.length; j++) {
+        var r = p.children[j], n = r.localName;
+        if (n === 'r' || n === 'fld') { var t = kid(r, 't'); if (t && t.textContent) buf += t.textContent; }
+        else if (n === 'br') buf += ' ';
+      }
+      parts.push(buf);
+    }
+    return parts.join(' ').replace(/\s+/g, ' ').trim();
+  }
+  // ชื่อกรอบที่ซ้ำกัน (เทียบด้วย norm เหมือนตอนจับคู่กับชีต รวม) -> ['ชื่อ x2', ...]
+  function mapDups(frames) {
+    var cnt = {}, first = {}, order = [];
+    frames.forEach(function (f) {
+      var k = norm(f.name);
+      if (!cnt[k]) { cnt[k] = 0; first[k] = f.name; order.push(k); }
+      cnt[k]++;
+    });
+    return order.filter(function (k) { return cnt[k] > 1; }).map(function (k) { return first[k] + ' x' + cnt[k]; });
+  }
+  function parseDrawingShapes(xml, theme) {
+    var root = new DOMParser().parseFromString(xml, 'application/xml').documentElement;
+    if (!root || root.getElementsByTagName('parsererror').length) throw new Error('drawing XML อ่านไม่ได้');
+    var frames = [], decor = [], unknown = [];
+
+    function lineInfo(spPr, style) {                       // -> [สีเส้น|null, ความกว้าง px]
+      var ln = kid(spPr, 'ln'), hexv = null, explicit = false, w = null, i;
+      if (ln) {
+        if (ln.getAttribute('w') !== null && !isNaN(parseFloat(ln.getAttribute('w')))) w = parseFloat(ln.getAttribute('w'));
+        for (i = 0; i < ln.children.length; i++) {
+          var n = ln.children[i].localName;
+          if (n === 'noFill') { explicit = true; hexv = null; break; }
+          if (n === 'solidFill') { explicit = true; hexv = firstClr(ln.children[i], theme, style.lnClr); break; }
+        }
+      }
+      if (!explicit && style.lnIdx > 0) hexv = style.lnClr;
+      if (hexv === null) return [null, 0];
+      if (w === null) w = style.lnIdx > 0 ? LN_STYLE_W[Math.min(style.lnIdx, 3)] : 9525;
+      return [hexv, r3(w / EMU_PX)];
+    }
+    function fillInfo(spPr, style) {                       // -> สีพื้น | null
+      for (var i = 0; i < spPr.children.length; i++) {
+        var c = spPr.children[i], n = c.localName;
+        if (n === 'noFill') return null;
+        if (n === 'solidFill') return firstClr(c, theme, style.fillClr);
+        if (n === 'gradFill') { var gs = kid(kid(c, 'gsLst'), 'gs'); return gs ? firstClr(gs, theme, style.fillClr) : null; }
+      }
+      return style.fillIdx > 0 ? style.fillClr : null;
+    }
+    function readStyle(sp) {
+      var out = { lnIdx: 0, lnClr: null, fillIdx: 0, fillClr: null }, st = kid(sp, 'style');
+      if (!st) return out;
+      [['ln', 'lnRef'], ['fill', 'fillRef']].forEach(function (p) {
+        var ref = kid(st, p[1]);
+        if (!ref) return;
+        out[p[0] + 'Idx'] = parseInt(ref.getAttribute('idx') || '0', 10) || 0;
+        out[p[0] + 'Clr'] = firstClr(ref, theme, null);
+      });
+      return out;
+    }
+    function nvOf(node) {
+      for (var i = 0; i < node.children.length; i++) if (node.children[i].localName.indexOf('nv') === 0) return kid(node.children[i], 'cNvPr');
+      return null;
+    }
+
+    function handle(sp, M, isCxn) {
+      var cnv = nvOf(sp), spPr = kid(sp, 'spPr');
+      if (!spPr) return;
+      var xf = readXfrm(kid(spPr, 'xfrm'));
+      if (!xf) return;
+      var name = (cnv && cnv.getAttribute('name')) || 'shape';
+      var geomEl = kid(spPr, 'prstGeom'), geom = geomEl ? (geomEl.getAttribute('prst') || 'rect') : (kid(spPr, 'custGeom') ? 'custGeom' : 'rect');
+      var adj = {}, av = geomEl ? kid(geomEl, 'avLst') : null;
+      if (av) for (var i = 0; i < av.children.length; i++) {
+        var gd = av.children[i], mm = /^val\s+(-?\d+)$/.exec(gd.getAttribute('fmla') || '');
+        if (mm && (gd.getAttribute('name') === 'adj1' || gd.getAttribute('name') === 'adj2')) adj[gd.getAttribute('name')] = parseInt(mm[1], 10);
+      }
+      var ox = xf.off[0], oy = xf.off[1], ex = xf.ext[0], ey = xf.ext[1], ccx = ox + ex / 2, ccy = oy + ey / 2;
+      var T = mmul(M, aboutCenter(ccx, ccy, xf.rot, xf.fh, xf.fv));
+      // แยกเมทริกซ์รวมเป็น หมุน θ + พลิกแกน x + ขนาดจริง (กว้าง wv x สูง hv EMU)
+      var wv = Math.sqrt(T[0] * T[0] + T[1] * T[1]) * ex, hv = Math.sqrt(T[2] * T[2] + T[3] * T[3]) * ey;
+      var th = (Math.atan2(-T[2], T[3]) * 180 / Math.PI) % 360;
+      if (th < 0) th += 360;
+      var k = Math.round(th / 90) * 90;
+      if (Math.abs(th - k) < 0.01) th = k % 360;
+      var sxs = T[0] * Math.cos(th * Math.PI / 180) + T[1] * Math.sin(th * Math.PI / 180), flip = sxs < 0;
+      var cc = applyM(T, ccx, ccy), cxu = cc[0] / EMU_UNIT, cyu = cc[1] / EMU_UNIT, gw = wv / EMU_UNIT, gh = hv / EMU_UNIT;
+      var right = th === 0 || th === 90 || th === 180 || th === 270, bw, bh;
+      if (right) { bw = (th === 90 || th === 270) ? gh : gw; bh = (th === 90 || th === 270) ? gw : gh; }
+      else {
+        var t = th * Math.PI / 180;
+        bw = Math.abs(Math.cos(t)) * gw + Math.abs(Math.sin(t)) * gh;
+        bh = Math.abs(Math.sin(t)) * gw + Math.abs(Math.cos(t)) * gh;
+      }
+      var style = readStyle(sp), text = isCxn ? '' : shapeText(sp);
+      var fill = fillInfo(spPr, style), li = lineInfo(spPr, style), lcol = li[0], lw = li[1];
+
+      if (text) {
+        var bp = kid(kid(sp, 'txBody'), 'bodyPr'), vt = bp ? bp.getAttribute('vert') : null;
+        var vert = vt === 'vert' || vt === 'eaVert' ? 90 : vt === 'vert270' ? 270 : 0;
+        if (geom !== 'rect' && geom !== 'textNoShape') unknown.push(geom + ' (' + name + ')');
+        frames.push({
+          id: 'f' + (frames.length + 1), name: text, store: true,
+          x: r3(cxu - bw / 2 + 1), y: r3(cyu - bh / 2 + 1), w: r3(bw), h: r3(bh), lh: r3(bh),
+          color: fill || 'FFFFFF',
+          rot: right ? 0 : r3(th),                           // มุมที่ไม่ใช่ 90 ทวีคูณ ให้หน้าเว็บหมุนกรอบเอง
+          tr: ((right ? th : 0) + vert) % 360,               // หมุนข้อความ (มุม 90 ทวีคูณถูกพับเข้ากรอบแล้ว)
+          nf: fill === null, nb: lcol === null
+        });
+        return;
+      }
+      if (LINE_GEOMS.indexOf(geom) >= 0) {
+        if (lcol === null) return;
+        var p1 = applyM(T, ox, oy), p2 = applyM(T, ox + ex, oy + ey);
+        var x1 = p1[0] / EMU_UNIT, y1 = p1[1] / EMU_UNIT, x2 = p2[0] / EMU_UNIT, y2 = p2[1] / EMU_UNIT;
+        decor.push({ type: 'เส้น', x1: r3(x1), y1: r3(y1), x2: r3(x2), y2: r3(y2), color: lcol, thick: lw >= 2.5, lw: lw,
+          x: r3(Math.min(x1, x2) + 1), y: r3(Math.min(y1, y2) + 1), w: r3(Math.abs(x2 - x1)), h: r3(Math.abs(y2 - y1)) });
+        return;
+      }
+      if (DECOR_GEOMS.indexOf(geom) < 0) unknown.push(geom + ' (' + name + ')');
+      else if (fill === null && lcol === null) return;       // ไม่มีทั้งพื้นและเส้น = มองไม่เห็น
+      decor.push({ type: 'รูปทรง', geom: geom,
+        x: r3(cxu - bw / 2 + 1), y: r3(cyu - bh / 2 + 1), w: r3(bw), h: r3(bh),
+        cx: r3(cxu), cy: r3(cyu), gw: r3(gw), gh: r3(gh), rot: r3(th), fh: flip,
+        fill: fill, line: lcol, lw: lw,
+        adj1: adj.adj1 === undefined ? null : adj.adj1, adj2: adj.adj2 === undefined ? null : adj.adj2 });
+    }
+
+    function walk(node, M) {
+      var n = node.localName, cnv = nvOf(node);
+      if (cnv && (cnv.getAttribute('hidden') === '1' || cnv.getAttribute('hidden') === 'true')) return;
+      if (n === 'grpSp') {
+        var pr = kid(node, 'grpSpPr'), xf = pr ? readXfrm(kid(pr, 'xfrm')) : null, G = M;
+        if (xf) {
+          var ox = xf.off[0], oy = xf.off[1], ex = xf.ext[0], ey = xf.ext[1], px = xf.chOff[0], py = xf.chOff[1], qx = xf.chExt[0], qy = xf.chExt[1];
+          var sx = qx ? ex / qx : 1, sy = qy ? ey / qy : 1;
+          var Q = mmul([1, 0, 0, 1, ox, oy], mmul([sx, 0, 0, sy, 0, 0], [1, 0, 0, 1, -px, -py]));
+          G = mmul(M, mmul(aboutCenter(ox + ex / 2, oy + ey / 2, xf.rot, xf.fh, xf.fv), Q));
+        }
+        for (var i = 0; i < node.children.length; i++) {
+          var cn = node.children[i].localName;
+          if (cn === 'sp' || cn === 'cxnSp' || cn === 'grpSp' || cn === 'AlternateContent') walk(node.children[i], G);
+        }
+      } else if (n === 'sp' || n === 'cxnSp') handle(node, M, n === 'cxnSp');
+      else if (n === 'AlternateContent') {
+        var ch = kid(node, 'Choice');
+        if (ch) for (var j = 0; j < ch.children.length; j++) {
+          var c2 = ch.children[j].localName;
+          if (c2 === 'sp' || c2 === 'cxnSp' || c2 === 'grpSp') walk(ch.children[j], M);
+        }
+      } else unknown.push('ไม่รองรับ ' + n);
+    }
+
+    var ident = [1, 0, 0, 1, 0, 0];
+    for (var a = 0; a < root.children.length; a++) {
+      var an = root.children[a];
+      for (var b = 0; b < an.children.length; b++) {
+        var nn = an.children[b].localName;
+        if (['sp', 'cxnSp', 'grpSp', 'AlternateContent', 'pic', 'graphicFrame'].indexOf(nn) >= 0) walk(an.children[b], ident);
+      }
+    }
+    return { frames: frames, decor: decor, info: { unknownGeoms: unknown, duplicates: mapDups(frames) } };
+  }
+  function joinPath(dir, t) {
+    if (t.charAt(0) === '/') return t.slice(1);
+    var out = [];
+    (dir + '/' + t).split('/').forEach(function (p) { if (p === '..') out.pop(); else if (p && p !== '.') out.push(p); });
+    return out.join('/');
+  }
+  // ชีต SHEET_SHAPES + drawing -> {frames, decor, info} | null (ไม่มีชีต/ไม่มี shape = ให้ใช้ ผังคลัง)
+  function readShapeMap(wb) {
+    var sx = null;
+    try { sx = sheetXmlPath(wb, SHEET_SHAPES); } catch (e) { return null; }
+    var cut = sx.lastIndexOf('/'), rels = fileText(wb, sx.slice(0, cut) + '/_rels/' + sx.slice(cut + 1) + '.rels');
+    if (!rels) return null;
+    var dp = null, m, re = /<Relationship\s[^>]*>/g;
+    while ((m = re.exec(rels))) {
+      if (/\sType="[^"]*\/drawing"/.test(m[0])) { var t = /\sTarget="([^"]*)"/.exec(m[0]); if (t) dp = joinPath(sx.slice(0, cut), t[1]); break; }
+    }
+    var xml = dp && fileText(wb, dp);
+    if (!xml) return null;
+    var th = readTheme(wb), theme = {};
+    THEME_ORDER.forEach(function (n, i) { if (th[i]) theme[n] = th[i]; });
+    var res = parseDrawingShapes(xml, theme);
+    return res.frames.length ? res : null;
+  }
+
   // ---- อ่านชีต สินค้า และ รวม ----
   function parseProducts(wb) {
     var ws = wb.Sheets[SHEET_PROD], ref = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1'), out = [], r;
@@ -843,18 +1103,25 @@ h1, h2 { margin: 0; }
     var head = new Uint8Array(buf, 0, Math.min(2, buf.byteLength));
     if (head.length < 2 || head[0] !== 0x50 || head[1] !== 0x4B) throw friendly('ไฟล์นี้ไม่ใช่ไฟล์ Excel (.xlsx) หรือไฟล์เสีย — เลือกไฟล์ LAY_OUT_02.xlsx ใหม่');
     try {
-      wb = XLSX.read(buf, { type: 'array', cellStyles: true, bookFiles: true, sheets: [SHEET_MAP, SHEET_ALL, SHEET_PROD] });
+      wb = XLSX.read(buf, { type: 'array', cellStyles: true, bookFiles: true, sheets: [SHEET_MAP, SHEET_ALL, SHEET_PROD, SHEET_SHAPES] });
     } catch (e) {
       throw friendly('อ่านไฟล์ไม่สำเร็จ ตรวจว่าเป็นไฟล์ .xlsx ที่ถูกต้อง');
     }
     var names = (wb && wb.SheetNames) || [];
-    var miss = [SHEET_MAP, SHEET_ALL, SHEET_PROD].filter(function (n) { return names.indexOf(n) < 0 || !wb.Sheets[n]; });
+    var shape = null;                                       // ผังที่วาดด้วย shape (ถ้ามี) ใช้แทน ผังคลัง
+    try { shape = readShapeMap(wb); } catch (e) { shape = null; dbg('อ่านชีต ' + SHEET_SHAPES + ' ไม่สำเร็จ ถอยไปใช้ ผังคลัง: ' + e); }
+    var miss = (shape ? [SHEET_ALL, SHEET_PROD] : [SHEET_MAP, SHEET_ALL, SHEET_PROD]).filter(function (n) { return names.indexOf(n) < 0 || !wb.Sheets[n]; });
     if (miss.length) throw friendly('ไฟล์นี้ไม่ใช่ไฟล์ผังคลัง LAY_OUT_02 ขาดชีต: ' + miss.join(', ') + ' (ต้องมีทั้ง ผังคลัง, รวม, สินค้า)');
-    var map = parseMap(wb);
-    if (!map.frames.length) throw friendly('อ่านชีต ผังคลัง ไม่เจอกรอบเลย (กรอบต้องเป็นช่อง merge ที่มีชื่อกรอบอยู่ข้างใน)');
+    var map, mapSheet, mapInfo;
+    if (shape) { map = shape; mapSheet = SHEET_SHAPES; mapInfo = shape.info; mapInfo.source = 'shape'; }
+    else {
+      map = parseMap(wb);
+      if (!map.frames.length) throw friendly('อ่านชีต ผังคลัง ไม่เจอกรอบเลย (กรอบต้องเป็นช่อง merge ที่มีชื่อกรอบอยู่ข้างใน)');
+      mapSheet = SHEET_MAP; mapInfo = { source: 'cell', unknownGeoms: [], duplicates: mapDups(map.frames) };
+    }
     var lc = parseLocations(wb);
     var md = wb.Props && wb.Props.ModifiedDate;
-    return { fileDate: md ? new Date(md).toISOString() : null, frames: map.frames, decor: map.decor,
+    return { fileDate: md ? new Date(md).toISOString() : null, mapSheet: mapSheet, mapInfo: mapInfo, frames: map.frames, decor: map.decor,
       products: parseProducts(wb), locations: lc.locations, skipped: lc.skipped };
   }
 
@@ -1028,6 +1295,20 @@ h1, h2 { margin: 0; }
   }
 
   // วาดตกแต่งเป็น SVG หน่วย = ช่องกริด (stroke ใช้ px คงที่ ไม่ขยายตามซูม)
+  // เส้นทางลูกศรลง / วงเล็บปีกกาขวา ตามสูตร preset ของ Office (adj ว่าง = ค่าเริ่มต้น)
+  function clampN(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+  function downArrowPath(w, h, adj1, adj2) {
+    var ss = Math.min(w, h), maxA2 = ss ? 100000 * h / ss : 0;
+    var a1 = clampN(adj1 == null ? 50000 : adj1, 0, 100000), a2 = clampN(adj2 == null ? 50000 : adj2, 0, maxA2);
+    var y1 = h - ss * a2 / 100000, dx = w * a1 / 200000, hc = w / 2;
+    return 'M' + (hc - dx) + ',0 L' + (hc + dx) + ',0 L' + (hc + dx) + ',' + y1 + ' L' + w + ',' + y1 + ' L' + hc + ',' + h + ' L0,' + y1 + ' L' + (hc - dx) + ',' + y1 + ' Z';
+  }
+  function bracePath(w, h, adj1, adj2) {
+    var a2 = clampN(adj2 == null ? 50000 : adj2, 0, 100000), q3 = Math.min(100000 - a2, a2) / 2, ss = Math.min(w, h);
+    var a1 = clampN(adj1 == null ? 8333 : adj1, 0, ss ? q3 * h / ss : 0);
+    var y1 = ss * a1 / 100000, y3 = h * a2 / 100000, y2 = y3 - y1, y4 = h - y1, r = w / 2, A = ' A' + r + ',' + y1 + ' 0 0 ';
+    return 'M0,0' + A + '1 ' + r + ',' + y1 + ' L' + r + ',' + y2 + A + '0 ' + w + ',' + y3 + A + '0 ' + r + ',' + (y3 + y1) + ' L' + r + ',' + y4 + A + '1 0,' + h;
+  }
   function buildDecor() {
     var svg = svgEl('svg', { class: 'decor', viewBox: BOUNDS.x0 + ' ' + BOUNDS.y0 + ' ' + BOUNDS.w + ' ' + BOUNDS.h, 'aria-hidden': 'true' });
     function line(x1, y1, x2, y2, col, wpx) {
@@ -1037,7 +1318,25 @@ h1, h2 { margin: 0; }
     DECOR.forEach(function (d) {
       var L = d.x - 1, T = d.y - 1, W = d.w, H = d.h, col = '#' + (d.color || RED);
       if (d.type === 'เส้น') {                            // เส้นจากขอบเซลล์: หนา = ผนัง / บาง = วงเล็บ
-        line(d.x1, d.y1, d.x2, d.y2, col, d.thick ? 3 : 1.4);
+        if (d.lw != null) {                               // เส้นจาก shape: ความกว้างตาม Excel (px ที่สเกล 1:1 ปรับตามซูมใน applyScale)
+          svg.appendChild(svgEl('line', { x1: d.x1, y1: d.y1, x2: d.x2, y2: d.y2, stroke: col, 'stroke-width': Math.max(1, d.lw),
+            'data-lw': d.lw, 'vector-effect': 'non-scaling-stroke', 'stroke-linecap': 'butt' }));
+        } else line(d.x1, d.y1, d.x2, d.y2, col, d.thick ? 3 : 1.4);
+      } else if (d.type === 'รูปทรง') {                  // shape ตกแต่งจาก Excel: วาดในกรอบ gw x gh แล้วหมุน/พลิกรอบจุดกึ่งกลาง
+        var g = svgEl('g', { transform: 'translate(' + d.cx + ' ' + d.cy + ') rotate(' + d.rot + ') scale(' + (d.fh ? -1 : 1) + ' 1) translate(' + (-d.gw / 2) + ' ' + (-d.gh / 2) + ')' });
+        var pa = { fill: d.fill ? '#' + d.fill : 'none', stroke: d.line ? '#' + d.line : 'none', 'stroke-width': Math.max(1, d.lw || 0),
+          'data-lw': d.lw || 0, 'vector-effect': 'non-scaling-stroke', 'stroke-linejoin': 'miter' }, sh, k;
+        if (d.geom === 'rect') sh = svgEl('rect', { x: 0, y: 0, width: d.gw, height: d.gh });
+        else if (d.geom === 'ellipse') sh = svgEl('ellipse', { cx: d.gw / 2, cy: d.gh / 2, rx: d.gw / 2, ry: d.gh / 2 });
+        else if (d.geom === 'downArrow') sh = svgEl('path', { d: downArrowPath(d.gw, d.gh, d.adj1, d.adj2) });
+        else if (d.geom === 'rightBrace') sh = svgEl('path', { d: bracePath(d.gw, d.gh, d.adj1, d.adj2) });
+        else {                                            // ไม่รู้จักรูปทรง: วาดเป็นกรอบสี่เหลี่ยมเส้นประ (ไม่มีพื้น) — รายชื่อดูได้ในแผง DEBUG
+          sh = svgEl('rect', { x: 0, y: 0, width: d.gw, height: d.gh });
+          pa.fill = 'none'; pa.stroke = '#' + (d.line || '888888'); pa['stroke-dasharray'] = '4 3';
+        }
+        for (k in pa) sh.setAttribute(k, pa[k]);
+        g.appendChild(sh);
+        svg.appendChild(g);
       } else if (d.type === 'ลูกศรขึ้น' || d.type === 'ลูกศรลง') {
         var up = d.type === 'ลูกศรขึ้น', hd = d.hd || 3, cx = L + W / 2;
         svg.appendChild(svgEl('polygon', { fill: col, points: up
@@ -1061,9 +1360,11 @@ h1, h2 { margin: 0; }
         ? h('button', { class: 'frame store', type: 'button', 'data-id': f.id, 'aria-label': 'ดูสินค้าใน ' + f.name })
         : h('div', { class: 'frame sign', 'data-id': f.id });
       var fc = f.color || (f.store ? MAP_BLUE : 'FFFFFF');          // ป้ายไม่ระบุสี = พื้นขาว ไม่มีขอบ
-      el.style.background = '#' + fc;
+      el.style.background = f.nf ? 'transparent' : '#' + fc;           // nf = shape ไม่มีพื้น (กล่องข้อความเฉยๆ) → โปร่งใส
       el.style.color = relLum(fc) >= 0.179 ? '#000000' : '#ffffff';   // 0.179 = จุดที่ดำ/ขาวตัดกับพื้นเท่ากัน → เลือกตัวที่อ่านง่ายกว่าเสมอ
-      if (fc !== 'FFFFFF') el.style.border = '2px solid ' + shade(fc, 0.55);
+      if (f.nf) { el.classList.add('nf'); el.style.border = '1px dashed #8a94a3'; }                // กรอบจางๆ ให้รู้ว่าแตะได้
+      else if (fc !== 'FFFFFF' && !f.nb) el.style.border = '2px solid ' + shade(fc, 0.55);   // nb = shape ไม่มีเส้นขอบ
+      if (f.rot) el.style.transform = 'rotate(' + f.rot + 'deg)';      // มุมไม่ใช่ 90 ทวีคูณ (ปกติไม่มี)
       el.appendChild(h('div', { class: 'lbl' }, [h('span', null, [f.name])]));
       if (f.store) el.addEventListener('click', function () { openSheet(f.key); });
       map.appendChild(el);
@@ -1083,6 +1384,9 @@ h1, h2 { margin: 0; }
     var svg = map.querySelector('svg.decor');
     svg.setAttribute('width', BOUNDS.w * U);
     svg.setAttribute('height', BOUNDS.h * U);
+    Array.prototype.forEach.call(svg.querySelectorAll('[data-lw]'), function (el) {   // เส้นของ shape: ความหนาตามสเกลผัง (ขั้นต่ำ 1px)
+      el.setAttribute('stroke-width', Math.max(1, parseFloat(el.getAttribute('data-lw')) * U / 8));
+    });
     FRAMES.forEach(function (f) {
       var el = frameEls[f.id];
       el.style.left = (f.x - 1 - BOUNDS.x0) * U + 'px';
@@ -1090,7 +1394,8 @@ h1, h2 { margin: 0; }
       el.style.width = f.w * U + 'px';
       el.style.height = f.h * U + 'px';
       var lbl = el.firstChild;
-      lbl.style.height = (f.lh * U - (f.color !== 'FFFFFF' && (f.store || f.color) ? (f.lh === f.h ? 4 : 2) : 0)) + 'px';   // หักขอบกรอบ 2px
+      var bd = f.nf ? 1 : (f.color !== 'FFFFFF' && (f.store || f.color) && !f.nb) ? 2 : 0;       // ความหนาขอบกรอบ
+      lbl.style.height = (f.lh * U - (bd ? (f.lh === f.h ? 2 * bd : bd) : 0)) + 'px';              // หักขอบกรอบ
       fitLabel(f, el, lbl);
     });
     var z = $('zoomFit');
@@ -1102,8 +1407,15 @@ h1, h2 { margin: 0; }
     if (f.name.toLowerCase() === 'office') size = U * 6;
     else if (f.name.indexOf('โซนรหัส') === 0 && f.h >= 6) size = U * 2.3;
     var min = 6.5;
+    // ข้อความหมุน (tr = 90/180/270 จาก shape): หมุน span ด้วย transform ; 90/270 สลับแกน — ให้ความยาวบรรทัด = ความสูงกรอบ
+    var tr = f.tr || 0, swap = tr === 90 || tr === 270;
+    span.style.transform = tr ? 'rotate(' + tr + 'deg)' : '';
+    span.style.maxWidth = swap ? 'none' : '';
+    span.style.flex = swap ? 'none' : '';        // กันถูกบีบให้แคบกว่าความยาวที่ตั้งไว้
+    span.style.width = swap ? lbl.clientHeight + 'px' : '';
     el.style.fontSize = size + 'px';
-    while (size > min && (span.scrollHeight > lbl.clientHeight + 1 || span.scrollWidth > lbl.clientWidth + 1)) {
+    while (size > min && (swap ? (span.offsetHeight > lbl.clientWidth + 1 || span.scrollWidth > span.clientWidth + 1)
+        : (span.scrollHeight > lbl.clientHeight + 1 || span.scrollWidth > lbl.clientWidth + 1))) {
       size -= 0.5;
       el.style.fontSize = size + 'px';
     }
@@ -1282,6 +1594,8 @@ h1, h2 { margin: 0; }
     DECOR = d.decor || [];
     PRODUCTS = d.products || [];
     LOCS = d.locations || [];
+    var msn = $('mapSheetName');
+    if (msn) msn.textContent = d.mapSheet || SHEET_MAP;      // ชื่อชีตที่ใช้วาดผังจริง (ข้อมูลเก่าที่ไม่มี mapSheet = ผังคลัง)
     framesByKey = {};
     FRAMES.forEach(function (f) { f.key = norm(f.name); (framesByKey[f.key] = framesByKey[f.key] || []).push(f); });
     prodByCode = new Map();
@@ -1529,7 +1843,7 @@ h1, h2 { margin: 0; }
     if (d.skipped.length) warns.push('ข้ามแถวที่ข้อมูลไม่ครบ ' + d.skipped.length + ' แถว (เช่น ' + d.skipped.slice(0, 5).map(function (s) { return 'แถว ' + s.row; }).join(', ') + ')');
     if (an.unmatched.length) {
       kind = 'warn';
-      lines.push('คำเตือน: พบ Location ที่ไม่ตรงกับชื่อกรอบใดบนผัง ' + an.unmatched.length + ' ชื่อ (ตรวจการสะกด/ช่องว่าง ให้ตรงกับชื่อบนชีต ผังคลัง)');
+      lines.push('คำเตือน: พบ Location ที่ไม่ตรงกับชื่อกรอบใดบนผัง ' + an.unmatched.length + ' ชื่อ (ตรวจการสะกด/ช่องว่าง ให้ตรงกับชื่อบนชีต ' + (d.mapSheet || SHEET_MAP) + ')');
       an.unmatched.slice(0, 30).forEach(function (u) { warns.push('"' + u.loc + '" แถว ' + u.rows.slice(0, 6).join(', ') + (u.rows.length > 6 ? ' ...(' + u.rows.length + ' แถว)' : '')); });
       if (an.unmatched.length > 30) warns.push('และอีก ' + (an.unmatched.length - 30) + ' ชื่อ');
     }
@@ -1635,6 +1949,11 @@ h1, h2 { margin: 0; }
       L.push('เวลาไฟล์: ' + (cur.when || '-') + ' | โหลดอยู่: ' + loading);
       L.push('ผลอ่าน: กรอบ ' + cur.data.frames.length + ' | ตกแต่ง ' + cur.data.decor.length + ' ' + JSON.stringify(an.decorByType) +
         ' | สินค้า ' + cur.data.products.length + ' | ตำแหน่ง ' + cur.data.locations.length + ' | ข้ามแถว ' + (cur.data.skipped || []).length);
+      var mi = cur.data.mapInfo;
+      L.push('ผังที่ใช้: ' + (mi ? (mi.source === 'shape' ? 'ชีต shape' : 'ชีตเซลล์') + ' "' + (cur.data.mapSheet || SHEET_MAP) + '"' : 'ผังคลัง (ข้อมูลเก่าไม่มี mapInfo)') +
+        ' | กรอบ ' + cur.data.frames.length + ' | ตกแต่ง ' + cur.data.decor.length +
+        ' | รูปทรงไม่รู้จัก (' + (mi ? mi.unknownGeoms.length : 0) + '): ' + (mi ? mi.unknownGeoms.join('; ') : '-') +
+        ' | ชื่อกรอบซ้ำ (' + (mi ? mi.duplicates.length : 0) + '): ' + (mi ? mi.duplicates.join('; ') : '-'));
       L.push('Location ที่ไม่ตรงกรอบ (' + an.unmatched.length + '): ' + an.unmatched.map(function (u) { return u.loc + ' [แถว ' + u.rows.slice(0, 5).join(',') + ']'; }).join('; '));
     }
     L.push('Supabase: ' + (SB_ON ? 'เปิด (' + SUPABASE_URL + ')' : 'ปิด (ยังไม่ตั้งค่า)') + ' | อัปโหลด: ' + (CAN_UPLOAD ? 'พร้อม' : 'ปิด'));

@@ -11,6 +11,8 @@ build_finder.py — สร้างเว็บ "หาของในคลั�
     - ชีต "ผังคลัง"  = ผัง (วาดด้วยเซลล์: merge + สีพื้น + เส้นขอบ) -> กรอบ/ตกแต่งบนแผนที่เว็บ
     - ชีต "รวม"      = ตำแหน่งสินค้า (B=Location ต้องตรงชื่อกรอบบนผัง, C=รหัสสินค้า, E=หมายเหตุ)
     - ชีต "สินค้า"   = ชื่อ/หน่วยของรหัส (ชื่อรายการในชีตรวมเป็นสูตร จึงดึงชื่อจากชีตนี้เอง)
+    - ชีต "ผังให้เดย์ปรับเองได้" (ถ้ามี + มี shape) = ผังที่วาดด้วย shape (DrawingML) -> ใช้แทนชีต ผังคลัง ทั้งหมด
+      (shape ที่มีข้อความ = กรอบ, ไม่มีข้อความ = ตกแต่ง) ถ้าไม่มีชีตนี้ ถอยกลับไปอ่านชีต ผังคลัง ตามเดิม
     - ชีตอื่น (ค้นหา, กรอกป้าย, ป้ายแบบ1, ป้ายแบบ2) ไม่ใช้
 
 สคริปต์นี้ทำอะไร:
@@ -33,6 +35,8 @@ import argparse
 import colorsys
 import html
 import json
+import math
+import posixpath
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -49,6 +53,7 @@ DEFAULT_OUT = ROOT / "finder.html"
 PLACEHOLDER = "/*__DATA__*/"
 
 SHEET_MAP = "ผังคลัง"
+SHEET_SHAPES = "ผังให้เดย์ปรับเองได้"   # ผังที่เดย์วาดด้วย shape ของ Excel — ถ้ามีชีตนี้ (และมี drawing) ใช้แทน ผังคลัง
 SHEET_ALL = "รวม"
 SHEET_PROD = "สินค้า"
 LEGEND_TITLE = "คำอธิบาย"     # กล่องคำอธิบายทางขวาของผัง (ไม่ใช่กรอบ) — ข้ามทุกอย่างที่อยู่ตั้งแต่คอลัมน์นี้ไปทางขวา
@@ -419,6 +424,389 @@ def _rect_decor(typ, r1, c1, r2, c2, color, left, top):
 
 
 # ---------------------------------------------------------------------------
+# ผังจาก shape ของ Excel (ชีต SHEET_SHAPES -> drawing XML) -> frames + decor
+# (ต้องได้ผลเหมือน parseShapes() ใน finder_template.html ทุกข้อ — แก้ที่หนึ่งต้องแก้ทั้งสองที่)
+#   - หน่วยพิกัดเหมือนผังคลัง: 1 หน่วย = 8px = 76200 EMU ; x,y นับจาก 1 (= EMU/76200 + 1) ; ต้นทาง = มุมซ้ายบนของชีต
+#   - shape ที่มีข้อความ = กรอบ (แตะได้) ; ไม่มีข้อความ = ตกแต่ง (เส้น/สี่เหลี่ยม/วงรี/ลูกศร/วงเล็บ) แตะไม่ได้
+#   - ซ้อนกลุ่ม: ใช้เมทริกซ์ affine (ย้าย/ย่อขยายตาม ext/chExt, หมุน, พลิก รอบจุดกึ่งกลาง) คูณต่อกันทุกชั้น
+# ---------------------------------------------------------------------------
+NS_A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+EMU_UNIT = 76200.0            # EMU ต่อ 1 หน่วย (8px x 9525)
+EMU_PX = 9525.0               # EMU ต่อ 1px (96 dpi)
+LN_STYLE_W = (0, 9525, 25400, 38100)    # ความกว้างเส้นตาม lnRef idx 0..3 ของธีม Office
+SCHEME_ALIAS = {"tx1": "dk1", "tx2": "dk2", "bg1": "lt1", "bg2": "lt2"}
+SYS_CLR = {"windowText": "000000", "window": "FFFFFF"}
+DECOR_GEOMS = ("rect", "ellipse", "downArrow", "rightBrace")   # รูปทรงตกแต่งที่วาดเองได้ (นอกจากเส้น)
+LINE_GEOMS = ("line", "straightConnector1")
+
+
+def lname(e):
+    return e.tag.rsplit("}", 1)[-1] if isinstance(e.tag, str) else ""
+
+
+def kid(e, name):
+    """ลูกตัวแรกที่ชื่อ (ไม่สนใจ namespace)"""
+    for c in e:
+        if lname(c) == name:
+            return c
+    return None
+
+
+def to_lin(c):
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def from_lin(c):
+    c = max(0.0, min(1.0, c))
+    return c * 12.92 if c <= 0.0031308 else 1.055 * (c ** (1 / 2.4)) - 0.055
+
+
+def clr_hex(el, theme, ph):
+    """แท็กสี DrawingML (srgbClr/schemeClr/sysClr/scrgbClr + ตัวปรับ lumMod/lumOff/tint/shade/satMod/satOff) -> 'RRGGBB' | None
+    theme = {dk1:'..', lt1:..}; ph = สีแทน phClr (จาก style) """
+    if el is None:
+        return None
+    n, v = lname(el), el.get("val")
+    base = None
+    if n == "srgbClr" and v and re.fullmatch(r"[0-9A-Fa-f]{6}", v):
+        base = v.upper()
+    elif n == "schemeClr" and v:
+        base = ph if v == "phClr" else theme.get(SCHEME_ALIAS.get(v, v))
+    elif n == "sysClr":
+        lc = el.get("lastClr")
+        base = lc.upper() if lc and re.fullmatch(r"[0-9A-Fa-f]{6}", lc) else SYS_CLR.get(v)
+    elif n == "scrgbClr":
+        try:
+            base = "%02X%02X%02X" % tuple(int(max(0, min(100000, float(el.get(k) or 0))) / 100000.0 * 255 + 0.5) for k in "rgb")
+        except ValueError:
+            base = None
+    if not base:
+        return None
+    rgb = [int(base[i:i + 2], 16) / 255.0 for i in (0, 2, 4)]
+    for m in el:
+        mn = lname(m)
+        try:
+            val = float(m.get("val")) / 100000.0
+        except (TypeError, ValueError):
+            continue
+        if mn in ("lumMod", "lumOff", "satMod", "satOff"):
+            hh, ll, ss = colorsys.rgb_to_hls(*rgb)
+            if mn == "lumMod":
+                ll *= val
+            elif mn == "lumOff":
+                ll += val
+            elif mn == "satMod":
+                ss *= val
+            else:
+                ss += val
+            rgb = list(colorsys.hls_to_rgb(hh, max(0.0, min(1.0, ll)), max(0.0, min(1.0, ss))))
+        elif mn == "shade":
+            rgb = [from_lin(to_lin(c) * val) for c in rgb]
+        elif mn == "tint":
+            rgb = [from_lin(to_lin(c) * val + (1 - val)) for c in rgb]
+    return "%02X%02X%02X" % tuple(int(max(0.0, min(1.0, c)) * 255 + 0.5) for c in rgb)
+
+
+def first_clr(el, theme, ph):
+    """สีของลูกตัวแรกใน el (เช่น <a:solidFill><a:srgbClr/></a:solidFill>)"""
+    for c in el:
+        return clr_hex(c, theme, ph)
+    return None
+
+
+def read_xfrm(x):
+    """<a:xfrm> -> dict (หน่วย EMU / องศา) | None"""
+    if x is None:
+        return None
+    def pair(tag, a, b, dflt=0.0):
+        e = kid(x, tag)
+        try:
+            return (float(e.get(a)), float(e.get(b))) if e is not None else (dflt, dflt)
+        except (TypeError, ValueError):
+            return (dflt, dflt)
+    return {"off": pair("off", "x", "y"), "ext": pair("ext", "cx", "cy"),
+            "chOff": pair("chOff", "x", "y"), "chExt": pair("chExt", "cx", "cy"),
+            "rot": float(x.get("rot") or 0) / 60000.0,
+            "fh": x.get("flipH") in ("1", "true"), "fv": x.get("flipV") in ("1", "true")}
+
+
+def mmul(m, n):
+    """เมทริกซ์ affine (a,b,c,d,e,f): x' = a*x + c*y + e ; y' = b*x + d*y + f  -> m·n (ทำ n ก่อน แล้ว m)"""
+    return (m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1],
+            m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3],
+            m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5])
+
+
+def about_center(cx, cy, rot, fh, fv):
+    """หมุน(องศา, ตามเข็ม)+พลิก รอบจุด (cx,cy): T(c)·R·F·T(-c)"""
+    t = math.radians(rot)
+    r = (math.cos(t), math.sin(t), -math.sin(t), math.cos(t), 0.0, 0.0)
+    f = (-1.0 if fh else 1.0, 0.0, 0.0, -1.0 if fv else 1.0, 0.0, 0.0)
+    return mmul(mmul((1, 0, 0, 1, cx, cy), mmul(r, f)), (1, 0, 0, 1, -cx, -cy))
+
+
+def apply_m(m, x, y):
+    return (m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5])
+
+
+def shape_text(sp):
+    """ข้อความใน txBody: ย่อหน้าคั่นด้วยช่องว่าง แล้วยุบช่องว่างซ้อน (เหมือนชื่อกรอบของผังคลัง)"""
+    tb = kid(sp, "txBody")
+    if tb is None:
+        return ""
+    parts = []
+    for p in tb:
+        if lname(p) != "p":
+            continue
+        buf = []
+        for r in p:
+            n = lname(r)
+            if n in ("r", "fld"):
+                t = kid(r, "t")
+                if t is not None and t.text:
+                    buf.append(t.text)
+            elif n == "br":
+                buf.append(" ")
+        parts.append("".join(buf))
+    return " ".join(" ".join(parts).split())
+
+
+def read_drawing_shapes(xml_bytes, theme):
+    """drawing XML -> (frames, decor, info)  info = {unknownGeoms, duplicates}"""
+    root = ET.fromstring(xml_bytes)
+    frames, decor, unknown = [], [], []
+
+    def line_info(spPr, style):
+        """-> (สีเส้น|None, ความกว้าง px)"""
+        ln = kid(spPr, "ln")
+        hexv, explicit, w = None, False, None
+        if ln is not None:
+            if ln.get("w") is not None:
+                try:
+                    w = float(ln.get("w"))
+                except ValueError:
+                    w = None
+            for c in ln:
+                n = lname(c)
+                if n == "noFill":
+                    explicit, hexv = True, None
+                    break
+                if n == "solidFill":
+                    explicit, hexv = True, first_clr(c, theme, style["lnClr"])
+                    break
+        if not explicit and style["lnIdx"] > 0:
+            hexv = style["lnClr"]
+        if hexv is None:
+            return None, 0
+        if w is None:
+            w = LN_STYLE_W[min(style["lnIdx"], 3)] if style["lnIdx"] > 0 else 9525
+        return hexv, r3(w / EMU_PX)
+
+    def fill_info(spPr, style):
+        """-> สีพื้น | None (ไม่มีพื้น)"""
+        for c in spPr:
+            n = lname(c)
+            if n == "noFill":
+                return None
+            if n == "solidFill":
+                return first_clr(c, theme, style["fillClr"])
+            if n == "gradFill":
+                gl = kid(c, "gsLst")
+                gs = kid(gl, "gs") if gl is not None else None
+                return first_clr(gs, theme, style["fillClr"]) if gs is not None else None
+        return style["fillClr"] if style["fillIdx"] > 0 else None
+
+    def read_style(sp):
+        st = kid(sp, "style")
+        out = {"lnIdx": 0, "lnClr": None, "fillIdx": 0, "fillClr": None}
+        if st is None:
+            return out
+        for key, tag in (("ln", "lnRef"), ("fill", "fillRef")):
+            ref = kid(st, tag)
+            if ref is None:
+                continue
+            try:
+                out[key + "Idx"] = int(ref.get("idx") or 0)
+            except ValueError:
+                out[key + "Idx"] = 0
+            out[key + "Clr"] = first_clr(ref, theme, None)
+        return out
+
+    def handle(sp, M, is_cxn):
+        nv = next((c for c in sp if lname(c).startswith("nv")), None)
+        cnv = kid(nv, "cNvPr") if nv is not None else None
+        spPr = kid(sp, "spPr")
+        if spPr is None:
+            return
+        xf = read_xfrm(kid(spPr, "xfrm"))
+        if xf is None:
+            return
+        name = (cnv.get("name") if cnv is not None else "") or "shape"
+        geom_el = kid(spPr, "prstGeom")
+        if geom_el is not None:
+            geom = geom_el.get("prst") or "rect"
+        else:
+            geom = "custGeom" if kid(spPr, "custGeom") is not None else "rect"
+        adj = {}
+        av = kid(geom_el, "avLst") if geom_el is not None else None
+        if av is not None:
+            for gd in av:
+                m = re.fullmatch(r"val\s+(-?\d+)", gd.get("fmla") or "")
+                if m and gd.get("name") in ("adj1", "adj2"):
+                    adj[gd.get("name")] = int(m.group(1))
+        (ox, oy), (ex, ey) = xf["off"], xf["ext"]
+        ccx, ccy = ox + ex / 2.0, oy + ey / 2.0
+        T = mmul(M, about_center(ccx, ccy, xf["rot"], xf["fh"], xf["fv"]))
+        # แยกเมทริกซ์รวมเป็น หมุน θ + พลิกแกน x + ขนาดจริง (กว้าง wv x สูง hv EMU)
+        wv = math.sqrt(T[0] * T[0] + T[1] * T[1]) * ex
+        hv = math.sqrt(T[2] * T[2] + T[3] * T[3]) * ey
+        th = math.degrees(math.atan2(-T[2], T[3])) % 360.0
+        k = round(th / 90.0) * 90
+        if abs(th - k) < 0.01:
+            th = float(k % 360)
+        sxs = T[0] * math.cos(math.radians(th)) + T[1] * math.sin(math.radians(th))
+        flip = sxs < 0
+        cxu, cyu = [v / EMU_UNIT for v in apply_m(T, ccx, ccy)]
+        gw, gh = wv / EMU_UNIT, hv / EMU_UNIT
+        right = th in (0.0, 90.0, 180.0, 270.0)
+        if right:
+            bw, bh = (gh, gw) if th in (90.0, 270.0) else (gw, gh)
+        else:
+            t = math.radians(th)
+            bw = abs(math.cos(t)) * gw + abs(math.sin(t)) * gh
+            bh = abs(math.sin(t)) * gw + abs(math.cos(t)) * gh
+        style = read_style(sp)
+        text = "" if is_cxn else shape_text(sp)
+        fill = fill_info(spPr, style)
+        lcol, lw = line_info(spPr, style)
+
+        if text:
+            bp = kid(kid(sp, "txBody"), "bodyPr")
+            vert = {"vert": 90, "vert270": 270, "eaVert": 90}.get(bp.get("vert") if bp is not None else None, 0)
+            if geom not in ("rect", "textNoShape"):
+                unknown.append("%s (%s)" % (geom, name))
+            frames.append({
+                "id": "f%d" % (len(frames) + 1), "name": text, "store": True,
+                "x": r3(cxu - bw / 2 + 1), "y": r3(cyu - bh / 2 + 1), "w": r3(bw), "h": r3(bh), "lh": r3(bh),
+                "color": fill or "FFFFFF",
+                "rot": 0 if right else r3(th),                       # มุมที่ไม่ใช่ 90 ทวีคูณ ให้หน้าเว็บหมุนกรอบเอง
+                "tr": int((th if right else 0) + vert) % 360,        # หมุนข้อความ (มุม 90 ทวีคูณถูกพับเข้ากรอบแล้ว)
+                "nf": fill is None, "nb": lcol is None,
+            })
+            return
+        if geom in LINE_GEOMS:
+            if lcol is None:
+                return
+            x1, y1 = [v / EMU_UNIT for v in apply_m(T, ox, oy)]
+            x2, y2 = [v / EMU_UNIT for v in apply_m(T, ox + ex, oy + ey)]
+            decor.append({"type": "เส้น", "x1": r3(x1), "y1": r3(y1), "x2": r3(x2), "y2": r3(y2),
+                          "color": lcol, "thick": lw >= 2.5, "lw": lw,
+                          "x": r3(min(x1, x2) + 1), "y": r3(min(y1, y2) + 1), "w": r3(abs(x2 - x1)), "h": r3(abs(y2 - y1))})
+            return
+        if geom not in DECOR_GEOMS:
+            unknown.append("%s (%s)" % (geom, name))
+        elif fill is None and lcol is None:
+            return                                                    # ไม่มีทั้งพื้นและเส้น = มองไม่เห็น
+        decor.append({"type": "รูปทรง", "geom": geom,
+                      "x": r3(cxu - bw / 2 + 1), "y": r3(cyu - bh / 2 + 1), "w": r3(bw), "h": r3(bh),
+                      "cx": r3(cxu), "cy": r3(cyu), "gw": r3(gw), "gh": r3(gh), "rot": r3(th), "fh": flip,
+                      "fill": fill, "line": lcol, "lw": lw,
+                      "adj1": adj.get("adj1"), "adj2": adj.get("adj2")})
+
+    def walk(node, M):
+        n = lname(node)
+        nv = next((c for c in node if lname(c).startswith("nv")), None)
+        cnv = kid(nv, "cNvPr") if nv is not None else None
+        if cnv is not None and cnv.get("hidden") in ("1", "true"):
+            return
+        if n == "grpSp":
+            pr = kid(node, "grpSpPr")
+            xf = read_xfrm(kid(pr, "xfrm")) if pr is not None else None
+            if xf is None:
+                G = M
+            else:
+                (ox, oy), (ex, ey) = xf["off"], xf["ext"]
+                (px, py), (qx, qy) = xf["chOff"], xf["chExt"]
+                sx = ex / qx if qx else 1.0
+                sy = ey / qy if qy else 1.0
+                Q = mmul((1, 0, 0, 1, ox, oy), mmul((sx, 0, 0, sy, 0, 0), (1, 0, 0, 1, -px, -py)))
+                G = mmul(M, mmul(about_center(ox + ex / 2.0, oy + ey / 2.0, xf["rot"], xf["fh"], xf["fv"]), Q))
+            for c in node:
+                if lname(c) in ("sp", "cxnSp", "grpSp", "AlternateContent"):
+                    walk(c, G)
+        elif n in ("sp", "cxnSp"):
+            handle(node, M, n == "cxnSp")
+        elif n == "AlternateContent":
+            ch = kid(node, "Choice")
+            for c in (ch if ch is not None else []):
+                if lname(c) in ("sp", "cxnSp", "grpSp"):
+                    walk(c, M)
+        else:
+            unknown.append("ไม่รองรับ %s" % n)
+
+    ident = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+    for anchor in root:
+        for node in anchor:
+            if lname(node) in ("sp", "cxnSp", "grpSp", "AlternateContent", "pic", "graphicFrame"):
+                walk(node, ident)
+    return frames, decor, {"unknownGeoms": unknown, "duplicates": map_dups(frames)}
+
+
+def find_sheet_xml(zf, name):
+    """เหมือน sheet_xml_path แต่ไม่พบชีต = None (ไม่ SystemExit)"""
+    try:
+        return sheet_xml_path(zf, name)
+    except SystemExit:
+        return None
+
+
+def shape_drawing_path(zf, name=SHEET_SHAPES):
+    """ชีตที่ชื่อ name -> path ของ drawing XML ที่ชีตนั้นผูกอยู่ | None"""
+    sx = find_sheet_xml(zf, name)
+    if sx is None:
+        return None
+    d, b = sx.rsplit("/", 1)
+    try:
+        rels = zf.read("%s/_rels/%s.rels" % (d, b)).decode("utf-8")
+    except KeyError:
+        return None
+    for tag in re.findall(r"<Relationship\s[^>]*>", rels):
+        if re.search(r'\sType="[^"]*/drawing"', tag):
+            t = re.search(r'\sTarget="([^"]*)"', tag).group(1)
+            path = t[1:] if t.startswith("/") else posixpath.normpath(posixpath.join(d, t))
+            return path if path in zf.namelist() else None
+    return None
+
+
+def read_shape_map(zf):
+    """ชีต SHEET_SHAPES + drawing -> (frames, decor, info) | None (ไม่มีชีต/ไม่มี shape = ให้ใช้ ผังคลัง)"""
+    dp = shape_drawing_path(zf)
+    if dp is None:
+        return None
+    th = read_theme_colors(zf)
+    theme = {n: th[i] for i, n in enumerate(THEME_ORDER) if i < len(th) and th[i]}
+    try:
+        frames, decor, info = read_drawing_shapes(zf.read(dp), theme)
+    except (ET.ParseError, ValueError) as e:        # drawing เสีย -> ถอยไปใช้ ผังคลัง (เหมือนฝั่งเว็บ) แต่บอกให้รู้
+        print("คำเตือน: อ่านชีต %s ไม่สำเร็จ (%s) ถอยไปใช้ ผังคลัง" % (SHEET_SHAPES, e), file=sys.stderr)
+        return None
+    if not frames:
+        return None
+    return frames, decor, info
+
+
+def map_dups(frames):
+    """ชื่อกรอบที่ซ้ำกัน (เทียบด้วย norm_key เหมือนตอนจับคู่กับชีต รวม) -> ['ชื่อ x2', ...]"""
+    cnt, first = {}, {}
+    for f in frames:
+        k = norm_key(f["name"])
+        cnt[k] = cnt.get(k, 0) + 1
+        first.setdefault(k, f["name"])
+    return ["%s x%d" % (first[k], n) for k, n in cnt.items() if n > 1]
+
+
+
+# ---------------------------------------------------------------------------
 # สินค้า + รวม
 # ---------------------------------------------------------------------------
 def cell_str(v):
@@ -488,15 +876,22 @@ def parse_workbook(path):
     """อ่านไฟล์ -> dict {frames, decor, products, locations, skipped, fileDate}; ขาดชีตจำเป็น = SystemExit"""
     wb = openpyxl.load_workbook(path)
     zf = zipfile.ZipFile(path)
-    miss = [n for n in (SHEET_MAP, SHEET_ALL, SHEET_PROD) if n not in wb.sheetnames]
+    shape = read_shape_map(zf)          # ผังที่วาดด้วย shape (ถ้ามี) ใช้แทน ผังคลัง
+    need = (SHEET_ALL, SHEET_PROD) if shape else (SHEET_MAP, SHEET_ALL, SHEET_PROD)
+    miss = [n for n in need if n not in wb.sheetnames]
     if miss:
         raise SystemExit("ไฟล์ %s ขาดชีต: %s" % (path, ", ".join(miss)))
-    frames, decor = read_map(wb, zf)
-    if not frames:
-        raise SystemExit("อ่านชีต ผังคลัง ไม่เจอกรอบเลย (กรอบต้องเป็นช่อง merge ที่มีชื่อกรอบอยู่ข้างใน)")
+    if shape:
+        frames, decor, info = shape
+        info["source"], map_sheet = "shape", SHEET_SHAPES
+    else:
+        frames, decor = read_map(wb, zf)
+        info, map_sheet = {"source": "cell", "unknownGeoms": [], "duplicates": map_dups(frames)}, SHEET_MAP
+        if not frames:
+            raise SystemExit("อ่านชีต ผังคลัง ไม่เจอกรอบเลย (กรอบต้องเป็นช่อง merge ที่มีชื่อกรอบอยู่ข้างใน)")
     products = read_products(wb)
     locations, skipped = read_locations(wb, frames, products)
-    return {"fileDate": file_date(wb), "frames": frames, "decor": decor,
+    return {"fileDate": file_date(wb), "mapSheet": map_sheet, "mapInfo": info, "frames": frames, "decor": decor,
             "products": products, "locations": locations, "skipped": skipped}
 
 
@@ -528,7 +923,12 @@ def main():
     for d in data["decor"]:
         kinds[d["type"]] = kinds.get(d["type"], 0) + 1
     print("อ่านจาก %s" % src)
+    print("ผังจากชีต %s (%s)" % (data["mapSheet"], "shape" if data["mapInfo"]["source"] == "shape" else "เซลล์"))
     print("กรอบบนผัง %d | ตกแต่ง %d %s" % (len(data["frames"]), len(data["decor"]), kinds))
+    if data["mapInfo"]["unknownGeoms"]:
+        print("รูปทรงที่ไม่รู้จัก (วาดเป็นกรอบสี่เหลี่ยม) %d: %s" % (len(data["mapInfo"]["unknownGeoms"]), ", ".join(data["mapInfo"]["unknownGeoms"][:10])))
+    if data["mapInfo"]["duplicates"]:
+        print("ชื่อกรอบซ้ำ: %s" % ", ".join(data["mapInfo"]["duplicates"]))
     print("สินค้า %d รายการ | ตำแหน่งสินค้า (ชีต รวม) %d แถว | ข้ามแถว %d" % (
         len(data["products"]), len(data["locations"]), len(data["skipped"])))
     if unmatched:
