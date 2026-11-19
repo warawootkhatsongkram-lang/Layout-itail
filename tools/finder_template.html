@@ -1267,6 +1267,7 @@ h1, h2 { margin: 0; }
   var U_MIN = 4, U_MAX = 20;
   var U = 8;
   var frameEls = {};
+  var fontGroups = {};   // กลุ่มกรอบที่ใช้ตัวอักษรเท่ากัน (คีย์ -> {n, min, ids}) ใช้โชว์ในแผง debug
   var BOUNDS = { x0: 0, y0: 0, w: 1, h: 1 };
   function calcBounds() {
     var all = FRAMES.concat(DECOR);
@@ -1387,7 +1388,7 @@ h1, h2 { margin: 0; }
     Array.prototype.forEach.call(svg.querySelectorAll('[data-lw]'), function (el) {   // เส้นของ shape: ความหนาตามสเกลผัง (ขั้นต่ำ 1px)
       el.setAttribute('stroke-width', Math.max(1, parseFloat(el.getAttribute('data-lw')) * U / 8));
     });
-    FRAMES.forEach(function (f) {
+    FRAMES.forEach(function (f, i) {
       var el = frameEls[f.id];
       el.style.left = (f.x - 1 - BOUNDS.x0) * U + 'px';
       el.style.top = (f.y - 1 - BOUNDS.y0) * U + 'px';
@@ -1396,14 +1397,54 @@ h1, h2 { margin: 0; }
       var lbl = el.firstChild;
       var bd = f.nf ? 1 : (f.color !== 'FFFFFF' && (f.store || f.color) && !f.nb) ? 2 : 0;       // ความหนาขอบกรอบ
       lbl.style.height = (f.lh * U - (bd ? (f.lh === f.h ? 2 * bd : bd) : 0)) + 'px';              // หักขอบกรอบ
+      lbl.style.width = lbl.style.marginTop = lbl.style.marginLeft = '';
+      var cv = f.lh === f.h ? coverOf(f, i) : null;       // ถูกกรอบอื่นทับด้านเดียว -> วางข้อความเฉพาะส่วนที่มองเห็น (กรอบเดิมไม่เปลี่ยน)
+      if (cv) {
+        var vis = (cv.side === 'b' || cv.side === 't' ? f.h : f.w) - cv.ov, pad = 3;                 // vis = ความยาวส่วนที่เห็น (หน่วย) ; pad = เว้นจากรอยบัง กันตัวอักษรชิดขอบ
+        if (cv.side === 'b') lbl.style.height = Math.max(4, vis * U - bd - pad) + 'px';
+        else if (cv.side === 't') { lbl.style.height = Math.max(4, vis * U - bd - pad) + 'px'; lbl.style.marginTop = Math.max(0, cv.ov * U - bd + pad) + 'px'; }
+        else {
+          lbl.style.width = Math.max(4, vis * U - bd - 2 - pad) + 'px';                              // 2 = padding ซ้าย/ขวาของ .frame
+          if (cv.side === 'l') lbl.style.marginLeft = Math.max(0, cv.ov * U - bd - 2 + pad) + 'px';
+        }
+      }
       fitLabel(f, el, lbl);
+    });
+    // รอบสอง: กรอบเก็บของที่อยู่คอลัมน์เดียวกัน (x+กว้างเท่ากัน) และหมุนข้อความเหมือนกัน ใช้ตัวอักษรขนาดเท่ากัน = ค่าเล็กสุดที่ทุกกรอบในกลุ่มใส่ได้
+    // กรอบเตี้ย (สูง < 3 หน่วย) แยกกลุ่มเอง ไม่งั้นแถวเตี้ยจะลากทั้งคอลัมน์ให้เล็ก
+    fontGroups = {};
+    FRAMES.forEach(function (f) {
+      if (!f.store || f.nf || f.nb || f.name.toLowerCase() === 'office') return;
+      var k = Math.round(f.x * 2) / 2 + '|w' + Math.round(f.w) + '|r' + (f.tr || 0) + (f.h < 3 ? '|short' : '');
+      var g = fontGroups[k] || (fontGroups[k] = { n: 0, min: 99, ids: [] });
+      g.n++; g.ids.push(f.id);
+      g.min = Math.min(g.min, parseFloat(frameEls[f.id].style.fontSize));
+    });
+    Object.keys(fontGroups).forEach(function (k) {
+      fontGroups[k].ids.forEach(function (id) { frameEls[id].style.fontSize = fontGroups[k].min + 'px'; });
     });
     var z = $('zoomFit');
     if (z) { $('zoomOut').disabled = U <= U_MIN + 0.01; $('zoomIn').disabled = U >= U_MAX - 0.01; }
   }
+  // กรอบ f (ลำดับ i) ถูกกรอบที่อยู่หลังใน DOM (วาดทับ) บังจากด้านเดียวเต็มแนว -> {side: t/b/l/r, ov: ส่วนที่ถูกบัง(หน่วย)} ไม่งั้น null
+  function coverOf(f, i) {
+    if (f.nf || f.rot) return null;
+    var hit = null, n = 0;
+    for (var j = i + 1; j < FRAMES.length; j++) {
+      var c = FRAMES[j];
+      if (c.nf || c.rot) continue;                                                                  // nf = โปร่งใส ไม่บังใคร
+      var ox = Math.min(f.x + f.w, c.x + c.w) - Math.max(f.x, c.x), oy = Math.min(f.y + f.h, c.y + c.h) - Math.max(f.y, c.y);
+      if (ox < 0.3 || oy < 0.3) continue;                                                           // ทับกันนิดเดียว (ขอบชิด) ไม่นับ
+      n++;
+      if (ox >= f.w - 0.05 && oy < f.h - 0.05) hit = c.y + c.h >= f.y + f.h - 0.05 ? { side: 'b', ov: oy } : c.y <= f.y + 0.05 ? { side: 't', ov: oy } : null;
+      else if (oy >= f.h - 0.05 && ox < f.w - 0.05) hit = c.x + c.w >= f.x + f.w - 0.05 ? { side: 'r', ov: ox } : c.x <= f.x + 0.05 ? { side: 'l', ov: ox } : null;
+      else return null;
+    }
+    return n === 1 ? hit : null;
+  }
   function fitLabel(f, el, lbl) {
     var span = lbl.firstChild;
-    var size = Math.min(U * 1.5, 15);
+    var size = Math.min(U * 4, 22);
     if (f.name.toLowerCase() === 'office') size = U * 6;
     else if (f.name.indexOf('โซนรหัส') === 0 && f.h >= 6) size = U * 2.3;
     var min = 6.5;
@@ -1412,6 +1453,7 @@ h1, h2 { margin: 0; }
     span.style.transform = tr ? 'rotate(' + tr + 'deg)' : '';
     span.style.maxWidth = swap ? 'none' : '';
     span.style.flex = swap ? 'none' : '';        // กันถูกบีบให้แคบกว่าความยาวที่ตั้งไว้
+    span.style.whiteSpace = 'nowrap';            // บรรทัดเดียวเสมอ (กรอบกว้างแล้ว ตัวใหญ่ไม่ควรหักคำกลางคำ) ให้ย่อตัวอักษรแทน
     span.style.width = swap ? lbl.clientHeight + 'px' : '';
     el.style.fontSize = size + 'px';
     while (size > min && (swap ? (span.offsetHeight > lbl.clientWidth + 1 || span.scrollWidth > span.clientWidth + 1)
@@ -1956,6 +1998,7 @@ h1, h2 { margin: 0; }
         ' | ชื่อกรอบซ้ำ (' + (mi ? mi.duplicates.length : 0) + '): ' + (mi ? mi.duplicates.join('; ') : '-'));
       L.push('Location ที่ไม่ตรงกรอบ (' + an.unmatched.length + '): ' + an.unmatched.map(function (u) { return u.loc + ' [แถว ' + u.rows.slice(0, 5).join(',') + ']'; }).join('; '));
     }
+    L.push('ขนาดตัวอักษรกรอบ (px) กลุ่ม x|กว้าง|หมุน: ' + Object.keys(fontGroups).map(function (k) { return k + '=' + fontGroups[k].min + ' (' + fontGroups[k].n + ')'; }).join('; '));
     L.push('Supabase: ' + (SB_ON ? 'เปิด (' + SUPABASE_URL + ')' : 'ปิด (ยังไม่ตั้งค่า)') + ' | อัปโหลด: ' + (CAN_UPLOAD ? 'พร้อม' : 'ปิด'));
     L.push('Supabase ล่าสุด: ' + (lastSb ? lastSb.op + ' HTTP ' + lastSb.status + (lastSb.text ? ' ' + lastSb.text : '') : '-'));
     L.push('--- log ---');
