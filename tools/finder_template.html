@@ -606,6 +606,15 @@ h1, h2 { margin: 0; }
 .mgrp-h { display: flex; align-items: center; gap: 10px; margin: 6px 2px 10px; }
 .mgrp-q { flex: 1 1 auto; min-width: 0; font-family: var(--font-head); font-weight: 700; font-size: 18px; overflow-wrap: anywhere; }
 .mgrp-c { flex: 0 0 auto; color: var(--muted); font-size: 16px; }
+/* กดกรอบที่กะพริบ (หาหลายตัว): กล่อง "ต้องหยิบที่กรอบนี้" บนสุดของ sheet */
+.pick { margin: 8px 0 12px; padding: 10px 12px; border: 2px solid var(--hl); border-radius: 14px; background: var(--well); }
+.pick-h { color: var(--hl); font-family: var(--font-head); font-weight: 800; font-size: 18px; margin-bottom: 4px; }
+.pick-it { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+.pick-h + .pick-it { border-top: 0; }
+.pick-tx { flex: 1 1 auto; min-width: 0; }
+.pick-cd { font-family: var(--mono); font-weight: 800; font-size: 22px; letter-spacing: .5px; overflow-wrap: anywhere; color: var(--fg); }
+.pick-nm { font-weight: 700; overflow-wrap: anywhere; }
+.pick-all { margin: 4px 0 0; color: var(--muted); font-size: 16px; font-weight: 700; }
 .mnone { margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--hl); border-radius: 12px; background: var(--err-bg); color: var(--err-fg); font-weight: 700; overflow-wrap: anywhere; }
 .mmore { margin: -4px 2px 14px; color: var(--muted); font-size: 16px; }
 /* ภาพคลังสินค้า isometric (สีวัสดุ) */
@@ -2036,6 +2045,24 @@ h1, h2 { margin: 0; }
     if (lastFocus && lastFocus.focus) { try { lastFocus.focus({ preventScroll: true }); } catch (e) {} }
     if (pwDone) { var f = pwDone; pwDone = null; f(null); }     // ปิดช่องรหัสผ่าน = ยกเลิก
   }
+  // รายการที่ต้องหยิบในกรอบ key (เฉพาะตอนผังแสดงป้ายเลขช่องของหาหลายตัวอยู่) -> [{n: เลขช่อง, it: สินค้า, note}]
+  function multiPicks(key, fl) {
+    if (!multiGroups) return [];
+    var shown = (fl || []).some(function (f) { return frameEls[f.id] && frameEls[f.id].querySelector('.mnum'); });
+    if (!shown) return [];
+    var out = [], seen = {};
+    multiGroups.forEach(function (g) {
+      (g.list || []).slice(0, MULTI_CARDS).forEach(function (it) {
+        (locByCode.get(it.codeU) || []).forEach(function (l) {
+          var k = g.n + '|' + it.codeU + '|' + (l.note || '');
+          if (l.frame !== key || seen[k]) return;
+          seen[k] = true;
+          out.push({ n: g.n, it: it, note: l.note });
+        });
+      });
+    });
+    return out;
+  }
   function openSheet(key) {
     var fl = framesByKey[key];
     if (!fl) return;
@@ -2046,6 +2073,23 @@ h1, h2 { margin: 0; }
     $('sheetMeta').textContent = locs.length ? locs.length + ' รายการ' : 'ยังไม่มีรายการ';
     var body = $('sheetBody');
     body.textContent = '';
+    // หาหลายตัว: กรอบนี้มีป้ายเลขช่องอยู่ -> ขึ้น "ต้องหยิบที่กรอบนี้" (รหัส + ชื่อ + เลขช่อง) ไว้บนสุด ก่อนรายการทั้งหมด
+    var picks = multiPicks(key, fl);
+    if (picks.length) {
+      var pk = h('div', { class: 'pick' }, [h('div', { class: 'pick-h' }, ['ต้องหยิบที่กรอบนี้ ' + picks.length + ' รายการ'])]);
+      picks.forEach(function (x) {
+        pk.appendChild(h('div', { class: 'pick-it' }, [
+          h('span', { class: 'mbadge' }, [String(x.n)]),
+          h('div', { class: 'pick-tx' }, [
+            h('div', { class: 'pick-cd' }, [String(x.it.code)]),
+            h('div', { class: 'pick-nm' }, [x.it.name]),
+            x.note ? h('div', { class: 'note' }, ['หมายเหตุ: ' + x.note]) : null
+          ])
+        ]));
+      });
+      body.appendChild(pk);
+      if (locs.length) body.appendChild(h('div', { class: 'pick-all' }, ['ของทั้งหมดในกรอบนี้ (' + locs.length + ' รายการ)']));
+    }
     if (!locs.length) body.appendChild(h('div', { class: 'empty' }, ['ยังไม่มีสินค้าในกรอบนี้']));
     locs.forEach(function (l) {
       var p = prodByCode.get(String(l.code).toUpperCase());
