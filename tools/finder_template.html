@@ -247,6 +247,17 @@ h1, h2 { margin: 0; }
 }
 .searchbar input::placeholder { color: var(--muted); opacity: .9; }
 .searchbar input:focus { outline: 3px solid var(--safety); outline-offset: 1px; border-color: var(--safety-edge); }
+/* ช่องค้นหาให้เห็นชัด: กรอบแดงหนา + ป้าย "พิมพ์ค้นหาตรงนี้" + กะพริบเบาๆ ตอนยังว่าง */
+.searchbar .find-tag { display: flex; align-items: center; gap: 6px; margin: 0 2px 6px; color: var(--hl); font-size: 15px; font-weight: 800; }
+.searchbar .find-tag svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.searchbar input#q { border: 3px solid var(--hl); box-shadow: inset 0 2px 6px var(--well-shadow), 0 0 0 3px rgba(229,38,43,.18); }
+.searchbar input#q:focus { border-color: var(--hl); }
+.searchbar input#q:placeholder-shown:not(:focus) { animation: findpulse 1.6s ease-in-out infinite; }
+@keyframes findpulse {
+  0%, 100% { box-shadow: inset 0 2px 6px var(--well-shadow), 0 0 0 3px rgba(229,38,43,.18); }
+  50% { box-shadow: inset 0 2px 6px var(--well-shadow), 0 0 0 7px rgba(229,38,43,.30); }
+}
+@media (prefers-reduced-motion: reduce) { .searchbar input#q:placeholder-shown:not(:focus) { animation: none; } }
 
 /* ปุ่มทรงบล็อก 3 มิติ: ผิวไล่เฉด + ขอบล่างหนา กดแล้วยุบลง */
 .btn {
@@ -539,9 +550,11 @@ h1, h2 { margin: 0; }
   <div id="status" class="status warn" role="status">กำลังโหลดข้อมูล ...</div>
 
   <div class="searchbar">
+    <label class="find-tag" for="q"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v14M6 12l6 6 6-6"/></svg>พิมพ์ค้นหาสินค้าตรงนี้ แล้วกด ค้นหา</label>
     <div class="row">
       <input id="q" type="search" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false"
              placeholder="พิมพ์ชื่อหรือรหัสสินค้า เช่น เชือก, 560000000025" aria-label="ค้นหาสินค้า">
+      <button id="go" class="btn primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>ค้นหา</button>
       <button id="clear" class="btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6L6 18M6 6l12 12"/></svg>ล้าง</button>
     </div>
   </div>
@@ -2215,6 +2228,20 @@ h1, h2 { margin: 0; }
   $('q').addEventListener('input', function () {
     clearTimeout(timer);
     timer = setTimeout(function () { clearHighlight(); renderResults(); }, 150);
+  });
+  // กด "ค้นหา" หรือปุ่ม Enter/ค้นหา บนคีย์บอร์ด -> แสดงผล ปิดคีย์บอร์ด แล้วเลื่อนจอไปที่รายการผลค้นหา (ไม่ให้ช่องค้นหาที่ลอยอยู่บังหัวรายการ)
+  function goResults() {
+    clearTimeout(timer);
+    clearHighlight();
+    renderResults();
+    $('q').blur();
+    var bar = document.querySelector('.searchbar');
+    var top = $('results').getBoundingClientRect().top + window.pageYOffset - (bar ? bar.offsetHeight : 0) - 8;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }
+  $('go').addEventListener('click', goResults);
+  $('q').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); goResults(); }
   });
   $('clear').addEventListener('click', function () {
     clearTimeout(timer);
