@@ -287,6 +287,12 @@ h1, h2 { margin: 0; }
 .btn.primary:active:not(:disabled) { box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 0 0 var(--safety-depth), 0 2px 4px rgba(0,0,0,.3); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .searchbar .btn { flex: 0 0 auto; height: 54px; }
+/* แถวป้ายแดง + ปุ่ม "หาหลายตัว" ชิดขวา (ปุ่มเตี้ยกว่าปุ่มหลัก แต่ยังกดง่าย) */
+.searchbar .find-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+.searchbar .find-row .find-tag { margin-bottom: 0; flex: 1 1 auto; min-width: 0; }
+.btn.sm { min-height: 40px; padding: 0 8px; gap: 5px; font-size: 14px; margin-bottom: 0; }
+.btn.sm > svg { width: 18px; height: 18px; }
+.searchbar .btn.sm { height: 40px; }
 
 /* ผลลัพธ์ */
 #results { padding-top: 12px; }
@@ -420,6 +426,16 @@ h1, h2 { margin: 0; }
   box-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 .map.has-hl .frame:not(.hl), .map.has-hl svg.decor { opacity: .28; }
+/* ป้ายเลขช่อง (หาหลายตัว) มุมซ้ายบนของกรอบ — ฝั่งตรงข้ามกับ .cnt ที่อยู่มุมขวาบน */
+.frame .mnum {
+  position: absolute; top: -9px; left: -8px; z-index: 6;
+  min-width: 20px; padding: 0 5px;
+  border-radius: 10px; border: 2px solid #fff;
+  background: var(--hl); color: #fff;
+  font-size: 13px; line-height: 17px; font-weight: 800; letter-spacing: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,.6);
+  pointer-events: none; white-space: nowrap;
+}
 .frame.hl {
   z-index: 5;
   outline: 4px solid var(--hl);
@@ -539,6 +555,59 @@ h1, h2 { margin: 0; }
 .it .c { color: var(--muted); font-size: 16px; overflow-wrap: anywhere; font-family: var(--mono); letter-spacing: .5px; }
 .it .note { font-size: 16px; color: var(--muted); overflow-wrap: anywhere; }
 .empty { padding: 20px 0; color: var(--muted); text-align: center; }
+/* หาหลายตัว: sheet กรอกหลายช่อง + ผลลัพธ์แยกกลุ่ม */
+.sheet .hd.mhd { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.mhd .xbtn {
+  flex: 0 0 auto; width: 44px; height: 44px; margin: -2px -6px 0 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-strong); border-radius: 12px; background: var(--well); color: var(--fg);
+  -webkit-tap-highlight-color: transparent;
+}
+.mhd .xbtn svg, .mdel svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.mhd .xbtn:focus-visible, .mdel:focus-visible { outline: 3px solid var(--safety); outline-offset: 2px; }
+.mrow { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+/* วงกลมเลขช่อง: สีแดงเดียวกับป้ายเลขบนผัง จะได้โยงตาเห็นว่าช่องไหน = กรอบไหน */
+.mbadge {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 34px; height: 34px; padding: 0 6px; border-radius: 17px; box-sizing: border-box;
+  background: var(--hl); color: #fff; border: 2px solid #fff;
+  font-family: var(--font-head); font-weight: 800; font-size: 17px; line-height: 1;
+  box-shadow: 0 1px 3px rgba(0,0,0,.45);
+}
+.mq {
+  flex: 1 1 auto; min-width: 0; height: 50px; padding: 0 12px;
+  font: inherit; font-size: 18px; color: var(--fg);
+  background: var(--well); border: 1px solid var(--border-strong); border-radius: 12px;
+  box-shadow: inset 0 2px 6px var(--well-shadow);
+}
+.mq::placeholder { color: var(--muted); opacity: .9; }
+.mq:focus { outline: 3px solid var(--safety); outline-offset: 1px; border-color: var(--safety-edge); }
+.mdel {
+  flex: 0 0 auto; width: 48px; height: 48px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-strong); border-radius: 12px; background: var(--well); color: var(--muted);
+  -webkit-tap-highlight-color: transparent;
+}
+.mdel:active { filter: brightness(.92); }
+#multiAdd { width: 100%; min-height: 52px; margin: 6px 0 4px; font-size: 18px; }
+.mwarn { margin: 0 16px 10px; padding: 8px 12px; border: 1px solid var(--hl); border-radius: 10px; background: var(--err-bg); color: var(--err-fg); font-weight: 700; }
+.mwarn[hidden] { display: none; }
+.sheet .ft.mft { display: flex; gap: 10px; }
+.sheet .ft.mft .btn { width: auto; }
+.sheet .ft.mft #multiClear { flex: 1 1 0; }
+.sheet .ft.mft #multiGo { flex: 2 1 0; }
+/* ผลหาหลายตัว */
+.msum { margin: 2px 0 14px; }
+.msum .count-line { margin-bottom: 10px; color: var(--fg); font-weight: 700; }
+.msum .mbtns { display: flex; gap: 10px; }
+.msum .btn { min-height: 52px; font-size: 18px; }
+.msum .btn.primary { flex: 2 1 0; }
+.msum .btn:not(.primary) { flex: 1 1 0; }
+.mgrp-h { display: flex; align-items: center; gap: 10px; margin: 6px 2px 10px; }
+.mgrp-q { flex: 1 1 auto; min-width: 0; font-family: var(--font-head); font-weight: 700; font-size: 18px; overflow-wrap: anywhere; }
+.mgrp-c { flex: 0 0 auto; color: var(--muted); font-size: 16px; }
+.mnone { margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--hl); border-radius: 12px; background: var(--err-bg); color: var(--err-fg); font-weight: 700; overflow-wrap: anywhere; }
+.mmore { margin: -4px 2px 14px; color: var(--muted); font-size: 16px; }
 /* ภาพคลังสินค้า isometric (สีวัสดุ) */
 .scene-hero .t0{fill:#5f8fe0;stroke:#5f8fe0}.scene-hero .l0{fill:#2f62b8;stroke:#2f62b8}.scene-hero .r0{fill:#244c8f;stroke:#244c8f}.scene-hero .t1{fill:#ffb347;stroke:#ffb347}.scene-hero .l1{fill:#e07b1a;stroke:#e07b1a}.scene-hero .r1{fill:#b85f0d;stroke:#b85f0d}.scene-hero .t2{fill:#e8b678;stroke:#e8b678}.scene-hero .l2{fill:#c48a48;stroke:#c48a48}.scene-hero .r2{fill:#9c6a32;stroke:#9c6a32}.scene-hero .t3{fill:#d9a35f;stroke:#d9a35f}.scene-hero .l3{fill:#b37b3a;stroke:#b37b3a}.scene-hero .r3{fill:#8a5b28;stroke:#8a5b28}.scene-hero .t4{fill:#9fb4c9;stroke:#9fb4c9}.scene-hero .l4{fill:#7189a3;stroke:#7189a3}.scene-hero .r4{fill:#566c84;stroke:#566c84}.scene-hero .t5{fill:#a07a52;stroke:#a07a52}.scene-hero .l5{fill:#7d5b39;stroke:#7d5b39}.scene-hero .r5{fill:#5e432a;stroke:#5e432a}.scene-hero .t6{fill:#ffd23f;stroke:#ffd23f}.scene-hero .l6{fill:#f2b400;stroke:#f2b400}.scene-hero .r6{fill:#c28f00;stroke:#c28f00}.scene-hero .t7{fill:#3a4350;stroke:#3a4350}.scene-hero .l7{fill:#262d36;stroke:#262d36}.scene-hero .r7{fill:#1a2027;stroke:#1a2027}
 </style>
@@ -550,7 +619,10 @@ h1, h2 { margin: 0; }
   <div id="status" class="status warn" role="status">กำลังโหลดข้อมูล ...</div>
 
   <div class="searchbar">
+    <div class="find-row">
     <label class="find-tag" for="q"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v14M6 12l6 6 6-6"/></svg>พิมพ์ค้นหาสินค้าตรงนี้ แล้วกด ค้นหา</label>
+    <button id="multiOpen" class="btn sm" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>หาหลายตัว</button>
+    </div>
     <div class="row">
       <input id="q" type="search" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false"
              placeholder="พิมพ์ชื่อหรือรหัสสินค้า เช่น เชือก, 560000000025" aria-label="ค้นหาสินค้า">
@@ -592,6 +664,21 @@ h1, h2 { margin: 0; }
   <div class="hd"><h2 id="sheetTitle"></h2><div id="sheetMeta" class="meta"></div></div>
   <div id="sheetBody" class="bd"></div>
   <div class="ft"><button id="sheetClose" class="btn primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6L6 18M6 6l12 12"/></svg>ปิด</button></div>
+</div>
+<div id="multiSheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="multiTitle">
+  <div class="hd mhd">
+    <div><h2 id="multiTitle">หาหลายตัวพร้อมกัน</h2><div class="meta">พิมพ์ชื่อหรือรหัสสินค้า ช่องละ 1 อย่าง</div></div>
+    <button id="multiX" class="xbtn" type="button" aria-label="ปิด"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div id="multiBody" class="bd">
+    <div id="multiRows"></div>
+    <button id="multiAdd" class="btn" type="button">+ เพิ่มช่อง</button>
+  </div>
+  <div id="multiWarn" class="mwarn" role="alert" hidden></div>
+  <div class="ft mft">
+    <button id="multiClear" class="btn" type="button">ล้างทั้งหมด</button>
+    <button id="multiGo" class="btn primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>ค้นหาทั้งหมด</button>
+  </div>
 </div>
 <div id="pwSheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
   <div class="hd"><h2 id="pwTitle">ใส่รหัสผ่านสำหรับบันทึกไฟล์</h2><div class="meta">รหัสผ่านกลางที่ใช้ร่วมกัน (ไม่ถูกเก็บไว้ในเครื่อง)</div></div>
@@ -1702,6 +1789,7 @@ h1, h2 { margin: 0; }
   function clearHighlight() {
     $('map').classList.remove('has-hl');
     Object.keys(frameEls).forEach(function (k) { frameEls[k].classList.remove('hl'); });
+    Array.prototype.forEach.call($('map').querySelectorAll('.mnum'), function (e) { e.remove(); });   // ป้ายเลขช่อง (หาหลายตัว)
   }
   function highlight(keys) {
     clearHighlight();
@@ -1749,6 +1837,35 @@ h1, h2 { margin: 0; }
     return w;
   }
 
+  // การ์ดสินค้า 1 ใบ (ใช้ร่วมกันทั้งผลค้นหาช่องเดียวและผลหาหลายตัว)
+  function resCard(it) {
+    var locs = locByCode.get(it.codeU) || [];
+    var onMap = locs.filter(function (l) { return framesByKey[l.frame]; });
+    var card = h('div', { class: 'res' + (onMap.length ? ' clickable' : ''), 'data-code': it.code }, [
+      h('div', { class: 'nm' }, [it.name]),
+      h('div', { class: 'cd' }, ['รหัส ' + it.code + (it.unit ? ' · หน่วย ' + it.unit : '')])
+    ]);
+    if (locs.length) {
+      var wrap = h('div', { class: 'locs' });
+      locs.forEach(function (l) {
+        var found = !!framesByKey[l.frame];
+        var btn = h('button', { class: 'loc' + (found ? '' : ' nomap'), type: 'button', 'data-frame': l.frame }, [
+          h('span', { class: 'pin' }, [pinIcon(), l.loc + (found ? '' : ' (ไม่พบบนผัง)')]),
+          l.note ? h('span', { class: 'qty' }, [l.note]) : null
+        ]);
+        btn.addEventListener('click', function (ev) { ev.stopPropagation(); if (found) highlight([l.frame]); });
+        wrap.appendChild(btn);
+      });
+      card.appendChild(wrap);
+      if (onMap.length) card.addEventListener('click', function () {
+        highlight(onMap.map(function (l) { return l.frame; }));
+      });
+    } else {
+      card.appendChild(h('span', { class: 'noloc' }, ['ยังไม่ระบุตำแหน่ง']));
+    }
+    return card;
+  }
+
   function renderResults() {
     var box = $('results');
     box.textContent = '';
@@ -1765,32 +1882,137 @@ h1, h2 { margin: 0; }
     box.appendChild(h('div', { class: 'count-line' }, [
       'พบทั้งหมด ' + list.length + ' รายการ' + (list.length > MAX_SHOW ? ' (แสดง ' + MAX_SHOW + ' รายการแรก พิมพ์เพิ่มเพื่อกรอง)' : '')
     ]));
-    shown.forEach(function (it) {
-      var locs = locByCode.get(it.codeU) || [];
-      var onMap = locs.filter(function (l) { return framesByKey[l.frame]; });
-      var card = h('div', { class: 'res' + (onMap.length ? ' clickable' : ''), 'data-code': it.code }, [
-        h('div', { class: 'nm' }, [it.name]),
-        h('div', { class: 'cd' }, ['รหัส ' + it.code + (it.unit ? ' · หน่วย ' + it.unit : '')])
-      ]);
-      if (locs.length) {
-        var wrap = h('div', { class: 'locs' });
-        locs.forEach(function (l) {
-          var found = !!framesByKey[l.frame];
-          var btn = h('button', { class: 'loc' + (found ? '' : ' nomap'), type: 'button', 'data-frame': l.frame }, [
-            h('span', { class: 'pin' }, [pinIcon(), l.loc + (found ? '' : ' (ไม่พบบนผัง)')]),
-            l.note ? h('span', { class: 'qty' }, [l.note]) : null
-          ]);
-          btn.addEventListener('click', function (ev) { ev.stopPropagation(); if (found) highlight([l.frame]); });
-          wrap.appendChild(btn);
+    shown.forEach(function (it) { box.appendChild(resCard(it)); });
+  }
+
+  // ===== หาหลายตัวพร้อมกัน (sheet #multiSheet) =====
+  var MULTI_START = 5, MULTI_MAX = 30, MULTI_CARDS = 10;   // เริ่ม 5 ช่อง เพิ่มได้ถึง 30 · แสดงสูงสุด 10 การ์ดต่อช่อง
+  var multiGroups = null;   // ผลหาหลายตัวล่าสุด [{n: เลขช่อง, q: คำที่พิมพ์, list: ผลค้น}] — null = โหมดค้นหาช่องเดียว
+  var trashIcon = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
+  function multiRows() { return $('multiRows').children; }
+  function multiWarn(msg) {
+    var w = $('multiWarn');
+    w.textContent = msg || '';
+    w.hidden = !msg;
+  }
+  // เรียงเลขช่องใหม่ตามลำดับแถว (เรียกทุกครั้งที่เพิ่ม/ลบ) และปิดปุ่มเพิ่มเมื่อครบ 30
+  function multiRenumber() {
+    var rows = multiRows();
+    for (var i = 0; i < rows.length; i++) {
+      var n = i + 1;
+      rows[i].querySelector('.mbadge').textContent = String(n);
+      rows[i].querySelector('.mq').setAttribute('aria-label', 'ช่องค้นหาที่ ' + n);
+      rows[i].querySelector('.mdel').setAttribute('aria-label', 'ลบช่อง ' + n);
+    }
+    $('multiAdd').disabled = rows.length >= MULTI_MAX;
+  }
+  function multiFocusNext(row) {
+    var nxt = row.nextElementSibling;
+    if (nxt) { nxt.querySelector('.mq').focus(); }
+    else doMultiSearch();   // ช่องสุดท้าย + Enter = ค้นหาทั้งหมด
+  }
+  function multiAddRow(value) {
+    var inp = h('input', { class: 'mq', type: 'search', inputmode: 'search', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', placeholder: 'ชื่อหรือรหัสสินค้า' });
+    inp.value = value || '';
+    var del = h('button', { class: 'mdel', type: 'button' });
+    del.innerHTML = trashIcon;
+    var row = h('div', { class: 'mrow' }, [h('span', { class: 'mbadge' }, ['']), inp, del]);
+    inp.addEventListener('input', function () { multiWarn(''); });
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); multiFocusNext(row); }
+    });
+    del.addEventListener('click', function () {
+      multiWarn('');
+      if (multiRows().length <= 1) { inp.value = ''; inp.focus(); return; }   // ช่องสุดท้าย: ล้างค่าแทนการลบ
+      var idx = Array.prototype.indexOf.call(multiRows(), row);
+      row.remove();
+      multiRenumber();
+      var rows = multiRows(), keep = rows[Math.min(idx, rows.length - 1)];
+      if (keep) keep.querySelector('.mdel').focus();
+    });
+    $('multiRows').appendChild(row);
+    multiRenumber();
+    return row;
+  }
+  function openMulti() {
+    multiWarn('');
+    var rows = multiRows(), first = rows[0].querySelector('.mq');
+    for (var i = 0; i < rows.length; i++) {
+      var q = rows[i].querySelector('.mq');
+      if (!q.value.trim()) { first = q; break; }
+    }
+    openPanel('multiSheet', 'multiAdd');
+    first.focus();
+  }
+  // เลื่อนจอไปหัวรายการผลค้นหา โดยหักความสูงช่องค้นหาที่ลอยอยู่ (แบบเดียวกับ goResults)
+  function scrollToEl(id) {
+    var bar = document.querySelector('.searchbar');
+    var top = $(id).getBoundingClientRect().top + window.pageYOffset - (bar ? bar.offsetHeight : 0) - 8;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }
+  function doMultiSearch() {
+    var rows = multiRows(), groups = [];
+    for (var i = 0; i < rows.length; i++) {
+      var v = rows[i].querySelector('.mq').value.trim();
+      if (v) groups.push({ n: i + 1, q: v, list: null });
+    }
+    if (!groups.length) { multiWarn('กรอกอย่างน้อย 1 ช่อง'); return; }
+    multiWarn('');
+    clearTimeout(timer);
+    multiGroups = groups;
+    closeSheet();
+    renderMulti();
+    scrollToEl('results');
+  }
+  // ไฮไลต์ทุกกรอบที่เป็นตำแหน่งของการ์ดที่แสดง (≤10 ตัวแรกต่อช่อง) + ป้ายเลขช่องมุมซ้ายบน · คืนจำนวนกรอบ
+  function highlightMulti(groups) {
+    clearHighlight();
+    var nums = {}, ids = [];   // id กรอบ -> {เลขช่อง: true}
+    groups.forEach(function (g) {
+      (g.list || []).slice(0, MULTI_CARDS).forEach(function (it) {
+        (locByCode.get(it.codeU) || []).forEach(function (l) {
+          (framesByKey[l.frame] || []).forEach(function (f) {
+            if (!frameEls[f.id]) return;
+            if (!nums[f.id]) { nums[f.id] = {}; ids.push(f.id); }
+            nums[f.id][g.n] = true;
+          });
         });
-        card.appendChild(wrap);
-        if (onMap.length) card.addEventListener('click', function () {
-          highlight(onMap.map(function (l) { return l.frame; }));
-        });
-      } else {
-        card.appendChild(h('span', { class: 'noloc' }, ['ยังไม่ระบุตำแหน่ง']));
-      }
-      box.appendChild(card);
+      });
+    });
+    ids.forEach(function (id) {
+      var el = frameEls[id];
+      var ns = Object.keys(nums[id]).map(Number).sort(function (a, b) { return a - b; });
+      el.classList.add('hl');
+      el.appendChild(h('span', { class: 'mnum' }, [ns.join(',')]));
+    });
+    if (ids.length) $('map').classList.add('has-hl');
+    return ids.length;
+  }
+  function renderMulti() {
+    var box = $('results');
+    box.textContent = '';
+    multiGroups.forEach(function (g) { g.list = search(g.q) || []; });   // ค้นใหม่ทุกครั้ง (ข้อมูลอาจเพิ่งเปลี่ยน)
+    var frames = highlightMulti(multiGroups);
+    box.appendChild(h('div', { class: 'msum' }, [
+      h('div', { class: 'count-line' }, ['หาหลายตัว ' + multiGroups.length + ' ช่อง · กะพริบบนผัง ' + frames + ' กรอบ']),
+      h('div', { class: 'mbtns' }, [
+        h('button', { class: 'btn primary', type: 'button', onclick: function () {
+          highlightMulti(multiGroups);
+          scrollToEl('mapSec');
+        } }, ['ดูทุกจุดบนผัง']),
+        h('button', { class: 'btn', type: 'button', onclick: openMulti }, ['แก้รายการ'])
+      ])
+    ]));
+    multiGroups.forEach(function (g) {
+      var n = g.list.length;
+      box.appendChild(h('div', { class: 'mgrp-h' }, [
+        h('span', { class: 'mbadge' }, [String(g.n)]),
+        h('span', { class: 'mgrp-q' }, [g.q]),
+        n ? h('span', { class: 'mgrp-c' }, ['พบ ' + n + ' รายการ']) : null
+      ]));
+      if (!n) { box.appendChild(h('div', { class: 'mnone' }, ['ไม่พบสินค้าที่ตรงกับ "' + g.q + '"'])); return; }
+      g.list.slice(0, MULTI_CARDS).forEach(function (it) { box.appendChild(resCard(it)); });
+      if (n > MULTI_CARDS) box.appendChild(h('div', { class: 'mmore' }, ['(แสดง ' + MULTI_CARDS + ' รายการแรก พิมพ์ให้ละเอียดขึ้นเพื่อกรอง)']));
     });
   }
 
@@ -1808,6 +2030,7 @@ h1, h2 { margin: 0; }
   function closeSheet() {
     $('backdrop').classList.remove('open');
     $('sheet').classList.remove('open');
+    $('multiSheet').classList.remove('open');
     $('pwSheet').classList.remove('open');
     document.body.classList.remove('lock');
     if (lastFocus && lastFocus.focus) { try { lastFocus.focus({ preventScroll: true }); } catch (e) {} }
@@ -1857,7 +2080,7 @@ h1, h2 { margin: 0; }
     buildMap();
     clearHighlight();
     renderStatus();
-    renderResults();
+    if (multiGroups) renderMulti(); else renderResults();
     if (DEBUG) renderDebug();
   }
 
@@ -2226,11 +2449,13 @@ h1, h2 { margin: 0; }
 
   var timer = null;
   $('q').addEventListener('input', function () {
+    multiGroups = null;   // พิมพ์ในช่องเดิม = กลับโหมดค้นหาช่องเดียว
     clearTimeout(timer);
     timer = setTimeout(function () { clearHighlight(); renderResults(); }, 150);
   });
   // กด "ค้นหา" หรือปุ่ม Enter/ค้นหา บนคีย์บอร์ด -> แสดงผล ปิดคีย์บอร์ด แล้วเลื่อนจอไปที่รายการผลค้นหา (ไม่ให้ช่องค้นหาที่ลอยอยู่บังหัวรายการ)
   function goResults() {
+    multiGroups = null;
     clearTimeout(timer);
     clearHighlight();
     renderResults();
@@ -2244,12 +2469,31 @@ h1, h2 { margin: 0; }
     if (e.key === 'Enter') { e.preventDefault(); goResults(); }
   });
   $('clear').addEventListener('click', function () {
+    multiGroups = null;
     clearTimeout(timer);
     $('q').value = '';
     clearHighlight();
     renderResults();
     $('q').focus();
   });
+  // หาหลายตัว: เปิด sheet / เพิ่ม-ล้าง-ค้นหา
+  for (var mi = 0; mi < MULTI_START; mi++) multiAddRow('');
+  $('multiOpen').addEventListener('click', openMulti);
+  $('multiX').addEventListener('click', closeSheet);
+  $('multiAdd').addEventListener('click', function () {
+    if (multiRows().length >= MULTI_MAX) return;
+    multiWarn('');
+    var row = multiAddRow('');
+    row.querySelector('.mq').focus();
+    row.scrollIntoView({ block: 'nearest' });
+  });
+  $('multiClear').addEventListener('click', function () {
+    var rows = multiRows();
+    for (var i = 0; i < rows.length; i++) rows[i].querySelector('.mq').value = '';
+    multiWarn('');
+    rows[0].querySelector('.mq').focus();
+  });
+  $('multiGo').addEventListener('click', doMultiSearch);
   // แตะบรรทัดสถานะเพื่อย่อ/ขยายหมายเหตุ
   $('status').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('.tog') : null;
