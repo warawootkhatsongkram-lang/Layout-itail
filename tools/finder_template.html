@@ -297,6 +297,18 @@ h1, h2 { margin: 0; }
 .btn.sm { min-height: 40px; padding: 0 8px; gap: 5px; font-size: 14px; margin-bottom: 0; }
 .btn.sm > svg { width: 18px; height: 18px; }
 .searchbar .btn.sm { height: 40px; }
+/* ช่องกรอกเต็มบรรทัด (บรรทัด 1) + ปุ่ม ค้นหา/ล้าง แยกลงบรรทัด 2 */
+.searchbar .qwrap { position: relative; flex: 1 1 auto; min-width: 0; display: flex; }
+.searchbar .row.btns { margin-top: 10px; }
+.searchbar .row.btns .btn { flex: 1 1 0; }
+/* ตัวนับจำนวนตัวเลข (โชว์เฉพาะตอนพิมพ์เลขล้วน) อยู่ชิดขวาในช่องกรอก */
+.searchbar .qcount { position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  padding: 3px 9px; border-radius: 999px; background: var(--mc-green); color: var(--mc-green-fg);
+  font-size: 15px; font-weight: 800; line-height: 1.2; pointer-events: none; white-space: nowrap; }
+.searchbar .qcount[hidden] { display: none; }
+.searchbar .qwrap.counting input { padding-right: 130px; }
+/* ซ่อนปุ่ม x ในช่อง (ของเบราว์เซอร์) ไม่ให้ทับตัวนับ — ใช้ปุ่ม ล้าง แทน */
+.searchbar input#q::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
 
 /* ผลลัพธ์ */
 #results { padding-top: 12px; }
@@ -637,8 +649,13 @@ h1, h2 { margin: 0; }
     <button id="multiOpen" class="btn sm" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>หาหลายตัว</button>
     </div>
     <div class="row">
+      <div class="qwrap" id="qWrap">
       <input id="q" type="search" inputmode="search" autocomplete="off" autocapitalize="off" spellcheck="false"
              placeholder="พิมพ์ชื่อหรือรหัสสินค้า เช่น เชือก, 560000000025" aria-label="ค้นหาสินค้า">
+      <span id="qCount" class="qcount" aria-live="polite" hidden></span>
+      </div>
+    </div>
+    <div class="row btns">
       <button id="go" class="btn primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>ค้นหา</button>
       <button id="clear" class="btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6L6 18M6 6l12 12"/></svg>ล้าง</button>
     </div>
@@ -2496,7 +2513,16 @@ h1, h2 { margin: 0; }
   });
 
   var timer = null;
+  // ตัวนับ: ถ้าในช่องเป็นตัวเลขล้วน -> โชว์ว่ากรอกไปกี่ตัว (ช่องว่างหน้า-หลังไม่นับ) ; มีตัวอักษรอื่นปน/ช่องว่าง -> ซ่อน
+  function updateQCount() {
+    var v = ($('q').value || '').trim();
+    var on = /^[0-9]+$/.test(v);
+    $('qCount').hidden = !on;
+    $('qCount').textContent = on ? v.length + ' ตัวอักษร' : '';
+    $('qWrap').classList.toggle('counting', on);
+  }
   $('q').addEventListener('input', function () {
+    updateQCount();
     multiGroups = null;   // พิมพ์ในช่องเดิม = กลับโหมดค้นหาช่องเดียว
     clearTimeout(timer);
     timer = setTimeout(function () { clearHighlight(); renderResults(); }, 150);
@@ -2520,6 +2546,7 @@ h1, h2 { margin: 0; }
     multiGroups = null;
     clearTimeout(timer);
     $('q').value = '';
+    updateQCount();
     clearHighlight();
     renderResults();
     $('q').focus();
