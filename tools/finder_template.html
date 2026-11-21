@@ -1846,6 +1846,8 @@ h1, h2 { margin: 0; }
     var found = [];
     for (var i = 0; i < items.length; i++) {
       var it = items[i], ok = true;
+      // ของที่ยังไม่ระบุตำแหน่ง (ไม่มีในชีตรวม) = ไม่มีของในคลัง -> ไม่ต้องโชว์ในผลค้นหา (เดย์สั่ง)
+      if (!(locByCode.get(it.codeU) || []).length) continue;
       for (var t = 0; t < terms.length; t++) {
         if (it.hay.indexOf(terms[t]) < 0) { ok = false; break; }
       }
